@@ -5,6 +5,8 @@ from typing import Any
 
 from google.cloud import firestore
 
+from next_shift.events import publish_handover_received
+
 
 PROJECT_ID = "next-shift-506004"
 COLLECTION = "handover_issues"
@@ -77,6 +79,18 @@ def create_issue(
     }
 
     doc_ref.set(issue)
+
+    message_id = publish_handover_received(issue)
+
+    issue["handover_received_message_id"] = message_id
+
+    doc_ref.update(
+        {
+            "handover_received_message_id": message_id,
+            "updated_at": _now_iso(),
+        }
+    )
+
     return issue
 
 
