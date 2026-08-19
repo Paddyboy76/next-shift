@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+*.log
+
+# Google ADK local runtime state
+.adk/
