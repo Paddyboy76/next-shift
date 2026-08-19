@@ -1,0 +1,146 @@
+from __future__ import annotations
+
+import json
+import sys
+import traceback
+
+from google.cloud import pubsub_v1
+
+from next_shift.events.contracts import (
+    validate_handover_received_event,
+)
+from next_shift.persistence.processed_events import (
+    event_already_processed,
+    record_processed_event,
+)
+from next_shift.workflows.handover import (
+    get_issue,
+    transition_issue,
+)
+
+
+PROJECT_ID = "next-shift-506004"
+SUBSCRIPTION_ID = "next-shift-handover-received-test"
+WORKER_NAME = "facilities_worker"
+
+
+def process_facilities_issue(
+    issue_id: str,
+) -> str:
+    issue = get_issue(issue_id)
+
+    if issue["owner"] != "Facilities":
+        return "SKIPPED_NON_FACILITIES"
+
+    if issue["state"] != "RECEIVED":
+        return f"SKIPPED_STATE_{issue['state']}"
+
+    updated = transition_issue(
+        issue_id=issue_id,
+        new_state="TRIAGED",
+        actor=WORKER_NAME,
+        reason=(
+            "Versioned Pub/Sub handover event routed a newly received "
+            "Facilities-owned issue to the Facilities workflow."
+        ),
+    )
+
+    print(
+        f"TRIAGED issue_id={issue_id} "
+        f"state={updated['state']}"
+    )
+
+    return "TRIAGED"
+
+
+def callback(
+    message: pubsub_v1.subscriber.message.Message,
+) -> None:
+    print(
+        f"RECEIVED message_id={message.message_id} "
+        f"delivery_attempt={message.delivery_attempt}"
+    )
+
+    try:
+        payload = json.loads(
+            message.data.decode("utf-8")
+        )
+
+        validate_handover_received_event(payload)
+
+        event_id = payload["event_id"]
+        issue_id = payload["issue_id"]
+
+        if event_already_processed(event_id):
+            print(
+                f"ACK_DUPLICATE event_id={event_id} "
+                f"issue_id={issue_id}"
+            )
+            message.ack()
+            return
+
+        outcome = process_facilities_issue(issue_id)
+
+        record_processed_event(
+            event_id=event_id,
+            message_id=message.message_id,
+            issue_id=issue_id,
+            outcome=outcome,
+            worker=WORKER_NAME,
+        )
+
+        message.ack()
+
+        print(
+            f"ACK_SUCCESS event_id={event_id} "
+            f"issue_id={issue_id} "
+            f"outcome={outcome}"
+        )
+
+    except json.JSONDecodeError as exc:
+        print(
+            f"INVALID_JSON message_id={message.message_id}: {exc}",
+            file=sys.stderr,
+        )
+        message.nack()
+
+    except Exception as exc:
+        print(
+            f"PROCESSING_FAILED message_id={message.message_id}: "
+            f"{exc}",
+            file=sys.stderr,
+        )
+
+        traceback.print_exc()
+        message.nack()
+
+
+def main() -> None:
+    subscriber = pubsub_v1.SubscriberClient()
+
+    subscription_path = subscriber.subscription_path(
+        PROJECT_ID,
+        SUBSCRIPTION_ID,
+    )
+
+    print(f"Listening on {subscription_path}")
+
+    streaming_pull_future = subscriber.subscribe(
+        subscription_path,
+        callback=callback,
+    )
+
+    try:
+        streaming_pull_future.result()
+
+    except KeyboardInterrupt:
+        print("\nStopping Facilities worker...")
+        streaming_pull_future.cancel()
+        streaming_pull_future.result()
+
+    finally:
+        subscriber.close()
+
+
+if __name__ == "__main__":
+    main()
