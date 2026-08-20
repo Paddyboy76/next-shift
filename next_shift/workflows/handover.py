@@ -31,12 +31,19 @@ def create_issue(
     source_type: str,
     source_reference: str,
     owner: str | None = None,
+    workflow_input: dict[str, Any] | None = None,
     human_approval_required: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(owner, str) or not owner.strip():
         raise ValueError("Operational owner is required")
 
     validate_operational_owner(owner)
+
+    if workflow_input is None:
+        workflow_input = {}
+
+    if not isinstance(workflow_input, dict):
+        raise ValueError("workflow_input must be a dictionary")
 
     now = _now_iso()
 
@@ -47,6 +54,7 @@ def create_issue(
             "source_type": source_type,
             "source_reference": source_reference,
             "owner": owner,
+            "workflow_input": dict(workflow_input),
             "human_approval_required": human_approval_required,
             "state": "RECEIVED",
             "created_at": now,

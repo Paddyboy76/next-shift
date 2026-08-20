@@ -16,22 +16,52 @@ def create_handover_issue(
     source_type: str,
     source_reference: str,
     owner: str,
+    workflow_input: dict[str, Any] | None = None,
     human_approval_required: bool = False,
 ) -> dict[str, Any]:
     """
-    Create a new unresolved operational handover issue.
+    Create one unresolved non-clinical operational issue.
 
-    Args:
-        title: Short operational issue title.
-        description: Concise factual description.
-        source_type: Source such as handover_note, email, pdf, image,
-            or voice_note.
-        source_reference: Identifier linking the issue to its source.
-        owner: Operational owner or department.
-        human_approval_required: Whether human approval is required.
+    Call this tool once for every distinct operational issue found in a
+    handover. A single handover may therefore require multiple tool calls.
 
-    Returns:
-        Stored issue including ID and workflow state.
+    Valid owners:
+    - Facilities
+    - AssetLogistics
+    - LanguageAccess
+    - DischargeDME
+    - EVSThroughput
+
+    workflow_input contains structured specialist-specific routing data.
+
+    Examples:
+
+    AssetLogistics:
+        {}
+
+    LanguageAccess:
+        {
+            "language": "Spanish",
+            "service_location": "Room 402"
+        }
+
+    DischargeDME:
+        {
+            "equipment_type": "home_oxygen",
+            "delivery_destination": "Patient Home"
+        }
+
+    EVSThroughput:
+        {
+            "room": "Room 402",
+            "zone": "North Tower"
+        }
+
+    Facilities:
+        {}
+
+    Never use this tool for clinical orders, medication requests,
+    diagnosis, treatment, triage, or other licensed clinical decisions.
     """
     return create_issue(
         title=title,
@@ -39,6 +69,7 @@ def create_handover_issue(
         source_type=source_type,
         source_reference=source_reference,
         owner=owner,
+        workflow_input=workflow_input,
         human_approval_required=human_approval_required,
     )
 
@@ -48,12 +79,6 @@ def read_handover_issue(
 ) -> dict[str, Any]:
     """
     Read one tracked operational issue.
-
-    Args:
-        issue_id: Unique handover issue ID.
-
-    Returns:
-        Complete stored issue.
     """
     return get_issue(issue_id)
 
@@ -66,13 +91,7 @@ def advance_handover_issue(
     """
     Advance an issue through the controlled Next Shift workflow.
 
-    Args:
-        issue_id: Unique handover issue ID.
-        new_state: Valid Next Shift workflow state.
-        reason: Evidence-based reason for the transition.
-
-    Returns:
-        Successful updated issue or structured rejection.
+    This capability is not exposed to the intake agent.
     """
     try:
         return {

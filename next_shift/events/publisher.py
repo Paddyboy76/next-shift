@@ -28,7 +28,9 @@ def publish_handover_received(
     owner = issue.get("owner")
 
     if not isinstance(owner, str) or not owner.strip():
-        raise ValueError("Operational owner is required for publication")
+        raise ValueError(
+            "Operational owner is required for publication"
+        )
 
     validate_operational_owner(owner)
 
@@ -51,6 +53,9 @@ def publish_handover_received(
         "state": issue["state"],
         "source_type": issue["source_type"],
         "source_reference": issue["source_reference"],
+        "workflow_input": dict(
+            issue.get("workflow_input", {})
+        ),
     }
 
     future = publisher.publish(
