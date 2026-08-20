@@ -12,7 +12,10 @@ from security import (
     AuthenticationError,
     AuthorizationError,
 )
-from state import authorize_and_update
+from state import (
+    authorize_and_transition,
+    authorize_and_update,
+)
 
 
 app = Flask(__name__)
@@ -31,6 +34,19 @@ def _audience() -> str:
     return audience
 
 
+def _principal() -> str:
+    principal, _claims = (
+        verified_principal(
+            request.headers.get(
+                "Authorization"
+            ),
+            audience=_audience(),
+        )
+    )
+
+    return principal
+
+
 @app.get("/health")
 def health():
     return jsonify(
@@ -43,17 +59,14 @@ def health():
     )
 
 
-@app.post("/v1/issues/<issue_id>/mutate")
+@app.post(
+    "/v1/issues/<issue_id>/mutate"
+)
 def mutate_issue(
     issue_id: str,
 ):
     try:
-        principal, _claims = verified_principal(
-            request.headers.get(
-                "Authorization"
-            ),
-            audience=_audience(),
-        )
+        principal = _principal()
     except AuthenticationError:
         return (
             jsonify(
@@ -72,7 +85,10 @@ def mutate_issue(
         )
     )
 
-    if not isinstance(payload, dict):
+    if not isinstance(
+        payload,
+        dict,
+    ):
         return (
             jsonify(
                 {
@@ -85,15 +101,20 @@ def mutate_issue(
     capability = payload.get(
         "capability"
     )
+
     expected_state = payload.get(
         "expected_state"
     )
+
     updates = payload.get(
         "updates"
     )
 
     if (
-        not isinstance(capability, str)
+        not isinstance(
+            capability,
+            str,
+        )
         or not capability
         or not isinstance(
             expected_state,
@@ -136,5 +157,139 @@ def mutate_issue(
         {
             "status": "updated",
             "issue_id": issue_id,
+        }
+    )
+
+
+@app.post(
+    "/v1/issues/<issue_id>/transition"
+)
+def transition_issue(
+    issue_id: str,
+):
+    try:
+        principal = _principal()
+    except AuthenticationError:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "authentication_required"
+                    )
+                }
+            ),
+            401,
+        )
+
+    payload: dict[str, Any] | None = (
+        request.get_json(
+            silent=True
+        )
+    )
+
+    if not isinstance(
+        payload,
+        dict,
+    ):
+        return (
+            jsonify(
+                {
+                    "error": "invalid_request"
+                }
+            ),
+            400,
+        )
+
+    capability = payload.get(
+        "capability"
+    )
+
+    expected_state = payload.get(
+        "expected_state"
+    )
+
+    new_state = payload.get(
+        "new_state"
+    )
+
+    reason = payload.get(
+        "reason"
+    )
+
+    updates = payload.get(
+        "updates",
+        {},
+    )
+
+    if (
+        not isinstance(
+            capability,
+            str,
+        )
+        or not capability
+        or not isinstance(
+            expected_state,
+            str,
+        )
+        or not expected_state
+        or not isinstance(
+            new_state,
+            str,
+        )
+        or not new_state
+        or not isinstance(
+            reason,
+            str,
+        )
+        or not reason.strip()
+        or not isinstance(
+            updates,
+            dict,
+        )
+    ):
+        return (
+            jsonify(
+                {
+                    "error": "invalid_request"
+                }
+            ),
+            400,
+        )
+
+    try:
+        result = authorize_and_transition(
+            principal=principal,
+            issue_id=issue_id,
+            capability=capability,
+            expected_state=expected_state,
+            new_state=new_state,
+            reason=reason,
+            updates=updates,
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {
+                    "error": "not_authorized"
+                }
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "transitioned",
+            "issue_id": issue_id,
+            "from_state": (
+                result["from_state"]
+            ),
+            "to_state": (
+                result["to_state"]
+            ),
+            "transition_event_id": (
+                result[
+                    "transition_event_id"
+                ]
+            ),
         }
     )
