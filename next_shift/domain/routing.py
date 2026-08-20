@@ -9,6 +9,7 @@ OperationalOwner = Literal[
     "LanguageAccess",
     "DischargeDME",
     "EVSThroughput",
+    "PatientTransport",
 ]
 
 
@@ -18,6 +19,7 @@ VALID_OPERATIONAL_OWNERS: set[str] = {
     "LanguageAccess",
     "DischargeDME",
     "EVSThroughput",
+    "PatientTransport",
 }
 
 
@@ -27,12 +29,15 @@ OWNER_TO_WORKER: dict[str, str] = {
     "LanguageAccess": "language_access_worker",
     "DischargeDME": "discharge_dme_worker",
     "EVSThroughput": "evs_throughput_worker",
+    "PatientTransport": "patient_transport_worker",
 }
 
 
 def validate_operational_owner(owner: str) -> None:
     if owner not in VALID_OPERATIONAL_OWNERS:
-        raise ValueError(f"Unsupported operational owner: {owner}")
+        raise ValueError(
+            f"Unsupported operational owner: {owner}"
+        )
 
 
 def worker_for_owner(owner: str) -> str:

@@ -22,46 +22,25 @@ def create_handover_issue(
     """
     Create one unresolved non-clinical operational issue.
 
-    Call this tool once for every distinct operational issue found in a
-    handover. A single handover may therefore require multiple tool calls.
-
     Valid owners:
     - Facilities
     - AssetLogistics
     - LanguageAccess
     - DischargeDME
     - EVSThroughput
+    - PatientTransport
 
-    workflow_input contains structured specialist-specific routing data.
+    workflow_input contains specialist-specific data.
 
-    Examples:
-
-    AssetLogistics:
-        {}
-
-    LanguageAccess:
+    PatientTransport example:
         {
-            "language": "Spanish",
-            "service_location": "Room 402"
+            "origin": "Room 402",
+            "destination": "Discharge Lounge",
+            "transport_type": "wheelchair"
         }
-
-    DischargeDME:
-        {
-            "equipment_type": "home_oxygen",
-            "delivery_destination": "Patient Home"
-        }
-
-    EVSThroughput:
-        {
-            "room": "Room 402",
-            "zone": "North Tower"
-        }
-
-    Facilities:
-        {}
 
     Never use this tool for clinical orders, medication requests,
-    diagnosis, treatment, triage, or other licensed clinical decisions.
+    diagnosis, treatment, triage, or licensed clinical decisions.
     """
     return create_issue(
         title=title,
@@ -77,9 +56,6 @@ def create_handover_issue(
 def read_handover_issue(
     issue_id: str,
 ) -> dict[str, Any]:
-    """
-    Read one tracked operational issue.
-    """
     return get_issue(issue_id)
 
 
@@ -88,11 +64,6 @@ def advance_handover_issue(
     new_state: WorkflowState,
     reason: str,
 ) -> dict[str, Any]:
-    """
-    Advance an issue through the controlled Next Shift workflow.
-
-    This capability is not exposed to the intake agent.
-    """
     try:
         return {
             "ok": True,
