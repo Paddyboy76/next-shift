@@ -6,9 +6,8 @@ import traceback
 
 from google.cloud import pubsub_v1
 
-from next_shift.events.contracts import (
-    validate_handover_received_event,
-)
+from next_shift.domain.routing import worker_for_owner
+from next_shift.events.routing import route_handover_received_event
 from next_shift.persistence.processed_events import (
     event_already_processed,
     record_processed_event,
@@ -29,7 +28,9 @@ def process_facilities_issue(
 ) -> str:
     issue = get_issue(issue_id)
 
-    if issue["owner"] != "Facilities":
+    routed_worker = worker_for_owner(issue["owner"])
+
+    if routed_worker != WORKER_NAME:
         return "SKIPPED_NON_FACILITIES"
 
     if issue["state"] != "RECEIVED":
@@ -66,10 +67,19 @@ def callback(
             message.data.decode("utf-8")
         )
 
-        validate_handover_received_event(payload)
+        route = route_handover_received_event(payload)
 
-        event_id = payload["event_id"]
-        issue_id = payload["issue_id"]
+        event_id = route["event_id"]
+        issue_id = route["issue_id"]
+
+        if route["worker"] != WORKER_NAME:
+            print(
+                f"ACK_NOT_ROUTED event_id={event_id} "
+                f"issue_id={issue_id} "
+                f"target_worker={route['worker']}"
+            )
+            message.ack()
+            return
 
         if event_already_processed(event_id):
             print(

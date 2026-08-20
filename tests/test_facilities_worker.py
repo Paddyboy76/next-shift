@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -12,6 +13,7 @@ def make_event(
     *,
     event_id: str = "event-001",
     issue_id: str = "issue-001",
+    owner: str = "Facilities",
 ) -> dict[str, str]:
     return {
         "event_id": event_id,
@@ -19,7 +21,7 @@ def make_event(
         "event_version": "1.0",
         "occurred_at": "2026-08-20T00:00:00+00:00",
         "issue_id": issue_id,
-        "owner": "Facilities",
+        "owner": owner,
         "state": "RECEIVED",
         "source_type": "handover_note",
         "source_reference": "synthetic-test-001",
@@ -70,20 +72,41 @@ class FacilitiesRoutingTests(unittest.TestCase):
 
     @patch("workers.facilities_worker.transition_issue")
     @patch("workers.facilities_worker.get_issue")
-    def test_non_facilities_issue_is_skipped(
+    def test_other_canonical_owner_is_skipped(
         self,
         mock_get_issue: Mock,
         mock_transition_issue: Mock,
     ) -> None:
         mock_get_issue.return_value = {
             "id": "issue-002",
-            "owner": "Logistics",
+            "owner": "AssetLogistics",
             "state": "RECEIVED",
         }
 
         outcome = process_facilities_issue("issue-002")
 
         self.assertEqual(outcome, "SKIPPED_NON_FACILITIES")
+        mock_transition_issue.assert_not_called()
+
+    @patch("workers.facilities_worker.transition_issue")
+    @patch("workers.facilities_worker.get_issue")
+    def test_invalid_authoritative_owner_is_rejected(
+        self,
+        mock_get_issue: Mock,
+        mock_transition_issue: Mock,
+    ) -> None:
+        mock_get_issue.return_value = {
+            "id": "issue-002",
+            "owner": "RandomDepartment",
+            "state": "RECEIVED",
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Unsupported operational owner",
+        ):
+            process_facilities_issue("issue-002")
+
         mock_transition_issue.assert_not_called()
 
     @patch("workers.facilities_worker.transition_issue")
@@ -112,14 +135,12 @@ class FacilitiesCallbackTests(unittest.TestCase):
         "workers.facilities_worker.event_already_processed",
         return_value=True,
     )
-    def test_duplicate_event_is_acked_without_processing(
+    def test_duplicate_target_event_is_acked_without_processing(
         self,
         mock_already_processed: Mock,
         mock_process: Mock,
         mock_record: Mock,
     ) -> None:
-        import json
-
         message = FakeMessage(
             json.dumps(make_event()).encode("utf-8")
         )
@@ -155,8 +176,6 @@ class FacilitiesCallbackTests(unittest.TestCase):
         mock_process: Mock,
         mock_record: Mock,
     ) -> None:
-        import json
-
         message = FakeMessage(
             json.dumps(make_event()).encode("utf-8")
         )
@@ -164,6 +183,7 @@ class FacilitiesCallbackTests(unittest.TestCase):
         callback(message)
 
         mock_process.assert_called_once_with("issue-001")
+
         mock_record.assert_called_once_with(
             event_id="event-001",
             message_id="message-001",
@@ -174,6 +194,73 @@ class FacilitiesCallbackTests(unittest.TestCase):
 
         message.ack.assert_called_once()
         message.nack.assert_not_called()
+
+    @patch("workers.facilities_worker.record_processed_event")
+    @patch("workers.facilities_worker.process_facilities_issue")
+    @patch("workers.facilities_worker.event_already_processed")
+    def test_event_for_other_worker_is_acked_without_claiming_it(
+        self,
+        mock_already_processed: Mock,
+        mock_process: Mock,
+        mock_record: Mock,
+    ) -> None:
+        message = FakeMessage(
+            json.dumps(
+                make_event(owner="AssetLogistics")
+            ).encode("utf-8")
+        )
+
+        callback(message)
+
+        mock_already_processed.assert_not_called()
+        mock_process.assert_not_called()
+        mock_record.assert_not_called()
+
+        message.ack.assert_called_once()
+        message.nack.assert_not_called()
+
+    @patch("workers.facilities_worker.record_processed_event")
+    @patch("workers.facilities_worker.process_facilities_issue")
+    def test_invalid_event_version_is_nacked(
+        self,
+        mock_process: Mock,
+        mock_record: Mock,
+    ) -> None:
+        payload = make_event()
+        payload["event_version"] = "999.0"
+
+        message = FakeMessage(
+            json.dumps(payload).encode("utf-8")
+        )
+
+        callback(message)
+
+        mock_process.assert_not_called()
+        mock_record.assert_not_called()
+
+        message.nack.assert_called_once()
+        message.ack.assert_not_called()
+
+    @patch("workers.facilities_worker.record_processed_event")
+    @patch("workers.facilities_worker.process_facilities_issue")
+    def test_unknown_owner_is_nacked(
+        self,
+        mock_process: Mock,
+        mock_record: Mock,
+    ) -> None:
+        message = FakeMessage(
+            json.dumps(
+                make_event(owner="RandomDepartment")
+            ).encode("utf-8")
+        )
+
+        callback(message)
+
+        mock_process.assert_not_called()
+        mock_record.assert_not_called()
+
+        message.nack.assert_called_once()
+        message.ack.assert_not_called()
 
 
 if __name__ == "__main__":
