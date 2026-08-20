@@ -1,256 +1,129 @@
 # Next Shift — Canonical Project Truth
 
-**Status:** Active hackathon build  
+
+**Status:** Active hackathon build — operational fleet complete; fortified product phase underway  
 **Canonical repository:** `Paddyboy76/next-shift`  
 **Google Cloud project:** `next-shift-506004`  
 **Google Cloud project number:** `963749706976`  
 **Primary region:** `asia-southeast1` (Singapore)  
-**Last verified baseline:** commit `35eeba8071b45bf5a4998284d47b7f0e958361d9` — `Harden async workflow with idempotency and dead-letter handling`  
+**Last verified baseline:** commit `317e7e4d5f73d77418508dd2a94cf6f654631d7b` — `Add closed-loop Facilities coordination`  
 **Last verified date:** 2026-08-20
 
-This file is the **single source of truth for all future ChatGPT, Codex, and human development sessions** on Next Shift. Read it before making architectural changes. When project reality changes, update this file in the same PR/commit as the change whenever practical.
+
+This file is the canonical project truth for future ChatGPT, Codex, and human development sessions.
+
+
+Read it completely before making architectural changes.
+
+
+Repository state and live Google Cloud state are authoritative if either differs from this document.
+
 
 ---
 
-## 1. Project mission
 
-Next Shift is being built for the **Fortified Enterprise Fleet** track of Google’s **All Things Agentic Hackathon**.
+## 1. Mission
 
-The product concept is a non-clinical autonomous operations fleet for 24/7 environments, initially demonstrated in a hospital setting. It takes messy shift-handover inputs such as voice notes, emails, PDFs, images, and unresolved requests; extracts concrete operational issues; routes them to least-privilege specialist agents; maintains durable state across shifts; and verifies that actions were actually completed rather than merely discussed.
 
-The core product statement is:
+Next Shift is being built for Google's **All Things Agentic Hackathon**, targeting the **Fortified Enterprise Fleet** track and the Grand Prize.
+
+
+Next Shift is a non-clinical autonomous operations fleet for 24/7 environments, initially demonstrated in a synthetic hospital setting.
+
+
+Core statement:
+
 
 > **Next Shift does not summarize the handover. It finishes the operational work left behind by it.**
 
-The first vertical is hospital operations because the problem is concrete, multi-departmental, asynchronous, and easy for judges to understand. The architecture should remain vendor-neutral enough to generalize later to hotels, factories, airports, logistics, care homes, and other 24/7 operations.
+
+The system converts messy handover information into durable operational work, routes that work to least-privilege specialists, maintains state across shifts, performs asynchronous actions, gathers trusted evidence, and independently verifies completion.
+
 
 ---
 
-## 2. Hard boundaries and non-negotiables
 
-1. **No BDMS/Bangkok Hospital branding, data, code, internal systems, screenshots, identifiers, or proprietary workflows.** The project is Hallermann Consulting-owned and must remain independent.
-2. **Synthetic data only** for development, demos, tests, screenshots, videos, and public material.
-3. **Non-clinical operations only.** Next Shift must not diagnose, recommend treatment, alter medication, make clinical triage decisions, or present itself as clinical decision support.
-4. **Firestore is authoritative workflow truth.** The model may reason, recommend, or remember context, but it must not be treated as the source of truth for operational completion.
-5. **No agent gets broad permissions merely because it is convenient.** Capabilities are role-scoped and least-privilege.
-6. **An agent does not receive credit for saying it did something.** State-changing claims require externally verifiable evidence or trusted tool output.
-7. **No silent failure.** Invalid actions must be rejected, surfaced, retried safely when appropriate, or routed to human review/dead-letter handling.
-8. **No giant files / god modules.** Review Python files around 200 lines for mixed responsibilities; refactor before ~300 lines unless there is a strong reason not to.
-9. **Do not weaken deterministic workflow rules to make an LLM test pass.** Fix the tool contract, permission boundary, orchestration, or evidence flow instead.
-10. **Prefer full-file replacements for Python changes when editing interactively.** Avoid fragile mid-function copy/paste patches that can break indentation or imports.
+## 2. Hard boundaries
 
----
 
-## 3. Hackathon strategy
+These are non-negotiable.
 
-### Target
 
-Primary target: **Grand Prize**.  
-Track: **Fortified Enterprise Fleet**.
+1. Synthetic data only.
+2. No Bangkok Hospital / BDMS data, branding, screenshots, code, identifiers, internal systems, or proprietary workflows.
+3. Non-clinical operations only.
+4. No diagnosis.
+5. No prescribing or medication changes.
+6. No clinical triage or acuity decisions.
+7. No interpretation of clinical measurements for treatment decisions.
+8. No delegation of licensed clinical work.
+9. Firestore is authoritative operational truth.
+10. Agent memory must never replace Firestore workflow state.
+11. Agents cannot claim completion without trusted evidence.
+12. Operational specialists do not close their own work.
+13. Invalid or unauthorized actions must fail visibly.
+14. Least privilege must be technically enforced rather than entrusted only to prompts.
+15. Keep code modular; avoid god modules.
 
-The architecture should naturally demonstrate the track requirements rather than bolt them on for judging:
-
-- specialized institutional agents
-- long-running asynchronous execution
-- persistent cross-session context
-- agent discovery/lifecycle
-- least-privilege identity and authorization
-- gateway/policy enforcement
-- prompt-injection and data-leak protection
-- end-to-end observability
-
-### Demo thesis
-
-The winning demo should visibly prove action, not just produce prose.
-
-Ideal four-minute story:
-
-1. ingest messy synthetic handover material
-2. create several operational issues
-3. autonomously route issues to specialist agents
-4. show real state changes in Firestore
-5. show asynchronous processing across an artificial shift boundary
-6. show one hostile/prompt-injection attempt blocked
-7. show one unauthorized data access denied
-8. show a verifier refuse to close an issue without evidence
-9. advance time / next shift and show unresolved work resume from durable state
-10. finish with live Agent Platform / observability proof
-
-### Discovery work
-
-A Google Deep Research investigation has been requested to validate real hospital operational pain points and refine the agent mix. Its findings must be reviewed before locking the final demo workflow.
-
-A structured discovery conversation with a senior nursing director is planned to validate real pain points, especially:
-
-- what is routinely lost between shifts
-- what nurses/managers spend time chasing
-- which unresolved tasks cross departments
-- what appears complete but later proves incomplete
-- what repeatedly escalates
-- which activities are suitable for autonomous coordination
-- where human approval must remain mandatory
-- which operational failures matter most to frontline staff and nursing leadership
-
-Do not ask for confidential employer information, proprietary workflows, or patient data.
 
 ---
 
-## 4. Current technology stack
 
-### Core
+## 3. Current product architecture
 
-- **Python 3.12**
-- **Google ADK** for agent development
-- **Gemini 3.5 Flash** through Vertex AI
-- **Gemini Enterprise Agent Platform / Agent Runtime**
-- **Firestore Native mode** for deterministic operational state
-- **Pub/Sub** for asynchronous event routing
-- **Cloud Storage** for deployment staging
-- **Google Cloud IAM / Agent Identity** for least-privilege identities
-- later: **Memory Bank**, **Agent Gateway**, **Model Armor**, **Agent Registry**, **Agent Observability/OpenTelemetry**
-- secondary Google model planned: **Gemma** for constrained independent verification/security work if it materially improves the system
 
-### Repository / development
+The proven architecture is:
 
-- GitHub repository: `Paddyboy76/next-shift`
-- default branch: `main`
-- Cloud Shell used for current development
-- Google Cloud billing attached
-- budget alert: **THB 500/month**
-- development policy: free tier first, hackathon credit second, real spend last
-
-The THB 500 budget is a monitoring/alert mechanism, not an assumption that Google Cloud will enforce a hard shutdown at THB 500.
-
-Hackathon Google Cloud credit request: **USD 150 requested; approval/status must be verified before assuming it is available.**
-
----
-
-## 5. Google Cloud resources
-
-### Project
-
-- project ID: `next-shift-506004`
-- project number: `963749706976`
-- billing account used during setup: `0153B7-79FA06-D6A9AA`
-
-### Agent Runtime
-
-First deployed Agent Runtime resource:
-
-`projects/963749706976/locations/asia-southeast1/reasoningEngines/8140616966286082048`
-
-Display name: `Next Shift`
-
-Verified properties from successful deployment/testing:
-
-- region: `asia-southeast1`
-- framework: Google ADK
-- Python 3.12 package
-- managed Agent Identity enabled
-- telemetry enabled
-- remote `async_stream_query` works
-- Gemini 3.5 Flash remote invocation verified
-- runtime exposes managed session/memory-related methods
-
-### Storage
-
-Deployment staging bucket:
-
-`gs://next-shift-506004-agent-staging`
-
-Current bucket location is `US` multi-region. This was sufficient for deployment, but regional alignment should be revisited before claiming a strict data-residency architecture.
-
-### Firestore
-
-Database:
-
-`projects/next-shift-506004/databases/(default)`
-
-Properties:
-
-- type: `FIRESTORE_NATIVE`
-- edition: Standard
-- location: `asia-southeast1`
-- free tier: enabled at creation
-- delete protection: enabled
-- realtime updates: enabled
-
-### Pub/Sub
-
-Primary topic:
-
-`projects/next-shift-506004/topics/next-shift-handover-received`
-
-Current worker/test subscription:
-
-`projects/next-shift-506004/subscriptions/next-shift-handover-received-test`
-
-Dead-letter topic:
-
-`projects/next-shift-506004/topics/next-shift-dead-letter`
-
-Dead-letter review subscription:
-
-`next-shift-dead-letter-review`
-
-Current retry/dead-letter policy:
-
-- max delivery attempts: **5**
-- minimum retry backoff: **10s**
-- maximum retry backoff: **60s**
-- invalid event was experimentally confirmed to reach the DLQ after 5 failed deliveries
-
----
-
-## 6. Current proven architecture
-
-The currently working path is:
 
 ```text
-Synthetic handover input
+messy synthetic handover
         ↓
-Next Shift intake agent
+Next Shift ADK intake
         ↓
-create_handover_issue tool
+multiple structured operational issues
         ↓
-workflow layer
+Firestore authoritative state
         ↓
-Firestore issue persisted as RECEIVED
+versioned Pub/Sub event
         ↓
-versioned Pub/Sub event emitted
+owner routing metadata
         ↓
-Facilities worker receives event asynchronously
+filtered specialist subscription
         ↓
-worker validates contract + idempotency + ownership + current state
+least-privilege specialist worker
         ↓
-Facilities workflow performs RECEIVED → TRIAGED
+resumable deterministic workflow
         ↓
-processed event recorded
+operational action
         ↓
-Pub/Sub message ACKed
-```
+trusted external/synthetic evidence
+        ↓
+VERIFYING
+        ↓
+independent verifier
+        ↓
+CLOSED
 
-This has been tested end-to-end successfully.
+The system also supports:
 
-The implementation deliberately separates:
-
-- **LLM reasoning**
-- **agent/tool permissions**
-- **business workflow rules**
-- **persistence**
-- **event contracts**
-- **event transport**
-- **worker processing**
-
-Do not collapse these layers back together for convenience.
-
----
-
-## 7. Workflow state machine
+multi-issue handover decomposition
+deterministic owner routing
+versioned event contracts
+filtered specialist Pub/Sub subscriptions
+asynchronous processing
+idempotent event handling
+retry handling
+dead-letter queue
+persistent workflow history
+resumable specialist workflows
+trusted evidence
+independent verification
+cross-shift continuity snapshots
+rejection of prohibited clinical requests
+4. Canonical workflow state machine
 
 Canonical states:
 
-```text
 RECEIVED
 TRIAGED
 ASSIGNED
@@ -260,502 +133,677 @@ CLOSED
 BLOCKED
 HUMAN_REVIEW
 FAILED
-```
 
-Canonical transitions:
+Normal successful path:
 
-```text
 RECEIVED
-  → TRIAGED
-  → HUMAN_REVIEW
-  → FAILED
-
-TRIAGED
-  → ASSIGNED
-  → HUMAN_REVIEW
-  → FAILED
-
-ASSIGNED
-  → ACTION_PENDING
-  → BLOCKED
-  → HUMAN_REVIEW
-  → FAILED
-
-ACTION_PENDING
-  → VERIFYING
-  → BLOCKED
-  → HUMAN_REVIEW
-  → FAILED
-
-VERIFYING
-  → CLOSED
-  → ACTION_PENDING
-  → BLOCKED
-  → HUMAN_REVIEW
-  → FAILED
-
-BLOCKED
-  → ASSIGNED
-  → ACTION_PENDING
-  → HUMAN_REVIEW
-  → FAILED
-
-HUMAN_REVIEW
-  → ASSIGNED
-  → ACTION_PENDING
-  → FAILED
-
-CLOSED
-  → terminal
-
-FAILED
-  → terminal
-```
+→ TRIAGED
+→ ASSIGNED
+→ ACTION_PENDING
+→ VERIFYING
+→ CLOSED
 
 Rules:
 
-- do not skip states unless the canonical state machine is intentionally changed
-- do not invent statuses such as `ESCALATED`, `COMPLETE`, `RESOLVED`, or `IN_PROGRESS`
-- invalid transitions return structured rejections at tool boundaries where possible rather than crashing the whole agent process
-- closure must eventually belong to a verifier/evidence flow, not the operational specialist that performed the work
+do not invent alternative status names
+do not silently skip state transitions
+workflow mutation must obey deterministic state rules
+operational specialists may progress work but must not self-certify closure
+VERIFYING → CLOSED requires trusted evidence and independent verification
+invalid transitions fail visibly
+5. Operational fleet
 
----
+The following operational specialists are implemented.
 
-## 8. Agent roles and authority model
+Facilities
 
-### `next_shift` — intake agent
+Owner:
 
-Current authority:
+Facilities
 
-- can create a handover issue
-- can read a handover issue
-- cannot change workflow state
-- cannot claim downstream work occurred
-- should identify an obvious operational owner during intake
+Worker:
 
-This boundary was introduced after testing showed Gemini would otherwise continue from an empty ADK CLI turn and opportunistically advance workflow state. Removing the transition tool from intake solved the problem at the capability layer rather than through prompt pleading.
+facilities_worker
 
-### `facilities_agent` — specialist
+Closed-loop workflow proven:
 
-Current intended authority:
+RECEIVED
+→ TRIAGED
+→ ASSIGNED
+→ ACTION_PENDING
+→ trusted maintenance evidence
+→ VERIFYING
+→ independent verifier
+→ CLOSED
 
-- reads Facilities-owned issues
-- can perform Facilities-specific workflow progression where evidence/rules allow
-- currently proven first action: `RECEIVED → TRIAGED`
-- cannot close issues merely because Facilities was contacted or expected to act
+Synthetic example:
 
-### `facilities_worker`
+Leaking sink
+Room 402
+Asset Logistics
 
-Current asynchronous worker responsibility:
+Owner:
 
-- receive Pub/Sub message
-- decode JSON
-- validate event contract/version
-- check idempotency
-- read authoritative issue state
-- reject/skip non-Facilities or non-RECEIVED work where appropriate
-- perform deterministic first Facilities workflow action
-- record processed-event outcome
-- ACK success/duplicate/intentional skip
-- NACK processing failures so Pub/Sub retry/DLQ policy applies
+AssetLogistics
 
-### Planned roles
+Worker:
 
-Likely future roles, subject to research validation:
+asset_logistics_worker
 
-- dispatcher / routing agent
-- logistics or mobility agent
-- guest-services/interpreter agent
-- facilities agent
-- closure sentinel / follow-up agent
-- independent verifier
+Closed-loop wheelchair / asset workflow proven.
 
-Do not create agents merely to increase the agent count. Each agent must have a distinct institutional responsibility, permission boundary, and reason to exist.
+Synthetic RTLS example:
 
----
+WC-041
+Floor 3 - Lift Lobby
 
-## 9. Event contract and reliability baseline
+Authority chain:
 
-Current event:
+asset_logistics_worker
+→ synthetic_rtls
+→ independent_verifier
+Language Access
 
-- type: `handover.issue.received`
-- version: `1.0`
+Owner:
 
-Required payload fields:
+LanguageAccess
 
-```text
-event_id
-event_type
-event_version
-occurred_at
-issue_id
+Worker:
+
+language_access_worker
+
+Closed-loop interpreter coordination proven.
+
+Example:
+
+Spanish interpreter
+Room 402
+
+Authority chain:
+
+language_access_worker
+→ synthetic_language_service
+→ independent_verifier
+Discharge DME
+
+Owner:
+
+DischargeDME
+
+Worker:
+
+discharge_dme_worker
+
+Closed-loop durable medical equipment coordination proven.
+
+Example equipment includes:
+
+home_oxygen
+hospital_bed
+walker
+wheelchair
+
+Authority chain:
+
+discharge_dme_worker
+→ synthetic_dme_vendor
+→ independent_verifier
+EVS Throughput
+
+Owner:
+
+EVSThroughput
+
+Worker:
+
+evs_throughput_worker
+
+Closed-loop room-turnaround coordination proven.
+
+Supports:
+
+EVS assignment
+cleaning request
+turnaround target
+ACTION_PENDING
+trusted cleaning-complete evidence
+independent closure
+Patient Transport
+
+Owner:
+
+PatientTransport
+
+Worker:
+
+patient_transport_worker
+
+Closed-loop transport coordination proven.
+
+Expected successful path:
+
+transport request
+→ transporter assignment
+→ ACTION_PENDING
+→ trusted arrival evidence
+→ VERIFYING
+→ independent verifier
+→ CLOSED
+6. Multi-issue handover intake
+
+The intake agent can decompose one messy handover into several independent operational issues.
+
+A synthetic handover has successfully produced separate work for:
+
+AssetLogistics
+LanguageAccess
+DischargeDME
+EVSThroughput
+Facilities
+
+PatientTransport is also implemented as an operational owner.
+
+Each issue receives specialist-specific workflow_input.
+
+The intake agent must not collapse several unrelated operational problems into one issue merely because they were mentioned in one handover.
+
+7. Clinical safety boundary
+
+Clinical requests are outside Next Shift authority.
+
+A focused synthetic request such as:
+
+prescribe 5 mg oxycodone for discharge
+
+was correctly refused without creating an operational issue.
+
+This boundary must remain technically and behaviorally visible.
+
+Future security work should strengthen this with platform policy and prompt-injection defenses, but must not weaken the deterministic non-clinical boundary already present.
+
+8. Cross-shift continuity
+
+Cross-shift continuity is implemented.
+
+A shift snapshot captures unresolved work while authoritative current state remains in Firestore.
+
+Example:
+
+Day Shift
+→ Night Shift
+
+A continuity snapshot records information including:
+
+captured issue
 owner
-state
-source_type
-source_reference
-```
+state at handover
+current authoritative state
+whether state changed
+next action
+still-open work
+work resolved after handover
 
-Safe routing metadata is published; do not place unnecessary sensitive or full clinical content into routing events.
+The incoming shift must read current Firestore state rather than trust a stale handover summary.
 
-Current reliability controls:
+9. Evidence and independent verification
 
-- UUID event IDs
-- explicit event type/version
-- contract validation
-- processed-event records in Firestore
-- duplicate event detection
-- deterministic current-state check before mutation
-- ACK only after successful/intentional handling
-- NACK on processing failures
-- exponential retry policy
-- dead-letter forwarding after bounded retries
+Evidence-backed closure is implemented.
 
-Acceptance proof completed:
+Fundamental rule:
 
-1. valid issue created as `RECEIVED`
-2. Pub/Sub worker autonomously moved it to `TRIAGED`
-3. processed-event record existed
-4. exact duplicate event was republished
-5. duplicate was ACKed without changing state
-6. intentionally invalid event version `999.0` was NACKed repeatedly
-7. Pub/Sub delivered it 5 times
-8. message then appeared successfully on the dead-letter review subscription with dead-letter source delivery count `5`
+An operational agent's claim that work happened is not proof that it happened.
 
----
+Trusted evidence sources are capability-specific synthetic integrations such as:
 
-## 10. Repository structure
+synthetic_rtls
+synthetic_dme_vendor
+synthetic_language_service
 
-Current modular direction:
+and equivalent trusted sources for the other implemented capabilities.
 
-```text
-next-shift/
-├── AGENTS.md
-├── acceptance_async.py
-├── deploy_agent.py
-├── facilities_worker.py          # thin compatibility/entry wrapper
-├── test_firestore.py
-│
-├── facilities/
-│   ├── __init__.py
-│   └── agent.py
-│
-├── next_shift/
-│   ├── __init__.py
-│   ├── agent.py
-│   ├── facilities_agent.py
-│   ├── handover_store.py         # compatibility shim
-│   ├── tools.py
-│   │
-│   ├── domain/
-│   │   ├── __init__.py
-│   │   └── states.py
-│   │
-│   ├── events/
-│   │   ├── __init__.py
-│   │   ├── contracts.py
-│   │   └── publisher.py
-│   │
-│   ├── persistence/
-│   │   ├── __init__.py
-│   │   ├── firestore.py
-│   │   └── processed_events.py
-│   │
-│   └── workflows/
-│       ├── __init__.py
-│       └── handover.py
-│
-└── workers/
-    ├── __init__.py
-    └── facilities_worker.py
-```
+Operational specialists progress work to ACTION_PENDING.
 
-At the latest measured refactor checkpoint, the largest production module was approximately 146 lines. Maintain this modularity as the system grows.
+Trusted evidence moves appropriate work toward VERIFYING.
 
-Separation of concerns:
+The independent verifier validates the evidence and owns closure.
 
-- `domain/` — canonical domain rules/types
-- `persistence/` — storage implementation only
-- `events/` — event schema + publication
-- `workflows/` — business transitions/orchestration
-- `tools.py` — thin ADK-facing tool adapters
-- `agent.py` / specialist agent files — agent policy/instructions/capabilities
-- `workers/` — event consumers and transport lifecycle
+Specialists must not close their own issues.
 
----
+10. Routing and worker isolation
 
-## 11. Known working Git history
+Canonical operational owners:
 
-Verified milestones:
+Facilities
+AssetLogistics
+LanguageAccess
+DischargeDME
+EVSThroughput
+PatientTransport
 
-- `888a949531ece5b2c5f66965adf106648f0a7c0a` — Initialize Next Shift ADK agent
-- `9d38f658bacd83a1c29d241d91a9392435f833f0` — Deploy Next Shift baseline to Agent Runtime
-- `821cb318804624ad6c91ce85b9db5b2f54280388` — Add durable handover workflow and facilities agent
-- `5e06fc3fcdf386ed9ac07fb1cd04ef27c1630c28` — Add asynchronous facilities routing with Pub/Sub
-- `35eeba8071b45bf5a4998284d47b7f0e958361d9` — Harden async workflow with idempotency and dead-letter handling
+Canonical workers:
 
-When starting a new session, verify current `origin/main` rather than assuming this SHA is still latest.
+facilities_worker
+asset_logistics_worker
+language_access_worker
+discharge_dme_worker
+evs_throughput_worker
+patient_transport_worker
 
----
+Routing is deterministic.
 
-## 12. Critical setup/deployment lessons already learned
+next_shift/domain/routing.py owns the canonical mapping between operational owners and specialist workers.
 
-### Vertex AI backend
+Workers must reject work outside their authority.
 
-Local ADK initially tried to use the Gemini Developer API and failed because no API key was supplied. The working Cloud/Vertex environment is:
+Current specialist workflows also perform owner checks, but Phase 2 will centralize this into a reusable, auditable authorization layer.
 
-```bash
-export GOOGLE_GENAI_USE_VERTEXAI=true
-export GOOGLE_CLOUD_PROJECT=next-shift-506004
-export GOOGLE_CLOUD_LOCATION=asia-southeast1
-```
+11. Pub/Sub architecture
 
-ADC must be valid:
+Shared handover topic:
 
-```bash
-gcloud auth application-default print-access-token >/dev/null && echo ADC_OK
-```
+next-shift-handover-received
 
-### Agent Runtime region
+Dead-letter topic:
 
-The first deployment repeatedly failed with generic code 13 while `LOCATION="global"` was used. Changing the runtime deployment location to:
+next-shift-dead-letter
 
-```text
+Known specialist subscriptions:
+
+next-shift-facilities
+next-shift-asset-logistics
+next-shift-discharge-dme
+next-shift-language-access
+next-shift-evs-throughput
+next-shift-patient-transport
+
+Specialist subscriptions use owner attribute filters.
+
+Known retry / DLQ configuration:
+
+maximum delivery attempts: 5
+minimum backoff: 10s
+maximum backoff: 60s
+
+Before modifying cloud resources, verify current live configuration.
+
+12. Reliability guarantees
+
+Implemented reliability controls include:
+
+UUID event IDs
+versioned event contracts
+deterministic routing
+current-state checks
+persistent processed-event records
+duplicate event detection
+ACK only after successful or intentional handling
+NACK on processing failure
+bounded retry
+dead-letter forwarding
+resumable workflows
+
+A duplicate event must not duplicate operational work.
+
+A malformed or unsupported event must fail visibly and follow retry / DLQ policy.
+
+13. Google Cloud project
+
+Expected project:
+
+next-shift-506004
+
+Project number:
+
+963749706976
+
+Primary region:
+
 asia-southeast1
-```
 
-produced the first successful Agent Runtime deployment. Do not revert Runtime deployment to `global` without verifying current platform support.
+Billing was verified enabled on 2026-08-20.
 
-### Service identities / staging bucket
+Always verify before mutation:
 
-During setup, the following identities were relevant:
-
-- `service-963749706976@gcp-sa-aiplatform.iam.gserviceaccount.com`
-- `service-963749706976@gcp-sa-aiplatform-re.iam.gserviceaccount.com`
-
-The Reasoning Engine service agent holds `roles/aiplatform.reasoningEngineServiceAgent`.
-
-Staging-bucket IAM was explicitly granted during troubleshooting. Verify before changing/removing it.
-
-### ADK Web
-
-`adk web` through Cloud Shell Web Preview produced a blank/black UI with `/dev-ui/` 403 responses. `adk run` worked and was used for local behavioral testing. Do not spend project time fighting the web dev UI unless needed.
-
-### ADK CLI behavior
-
-During interactive `adk run`, apparent empty user turns sometimes caused the agent to continue acting. This exposed an important architectural principle: **do not rely on prompts to prevent unauthorized state mutation. Remove the capability/tool from agents that must not perform that action.**
-
-### Deprecated client warning
-
-Current deployment/test code may emit a warning that `vertexai.Client` is deprecated in favor of `agentplatform.Client`. This warning did not prevent successful deployment. Migration should be done intentionally and tested, not mixed into unrelated feature work.
-
----
-
-## 13. Development and quality rules
-
-### Before editing
-
-Always verify:
-
-```bash
-cd ~/next-shift
-source .venv/bin/activate
-pwd
-git status
-git log -3 --oneline
-```
-
-For Google commands, prefer explicit project scoping:
-
-```bash
---project=next-shift-506004
-```
-
-Cloud Shell configurations can reset between sessions.
-
-### Code changes
-
-- make one architectural change at a time
-- syntax-check full changed Python modules before runtime testing
-- prefer full-file edits over fragile partial indentation-sensitive edits
-- maintain compatibility shims only when they simplify migration; do not let them become second implementations
-- keep agents thin
-- keep persistence unaware of agent-specific business policy
-- keep workflow rules deterministic
-- keep event contracts versioned
-
-### Tests
-
-Current useful tests/scripts:
-
-- `test_firestore.py`
-- `acceptance_async.py`
-- direct local ADK agent test with `adk run next_shift`
-- direct specialist test with `adk run facilities`
-
-Do not replace focused verification with huge undirected test runs.
-
-### Git
-
-- branch: `main`
-- keep working tree clean at milestones
-- never commit `.venv`, `.env`, `.adk/session.db`, credentials, generated Python caches, or secrets
-- `.adk/` runtime state must remain ignored
-- commit known-good architecture milestones frequently
-
----
-
-## 14. Security architecture direction
-
-The intended enterprise story is least privilege plus verifiable enforcement.
-
-Future security demonstrations should include:
-
-1. an untrusted uploaded document/email containing prompt injection
-2. Model Armor blocking or sanitizing the hostile instruction
-3. an agent attempting a resource it does not have permission to access
-4. Agent Identity / IAM / Gateway visibly denying that request
-5. audit/trace evidence showing the denied action
-
-Do not make unverified claims about Thai PDPA, GDPR, or regional data sovereignty. Synthetic data avoids the need to claim this prototype is currently production-compliant. Document what a real deployment would still require.
-
----
-
-## 15. Memory vs operational truth
-
-This distinction is fundamental.
-
-### Firestore
-
-Use for deterministic facts such as:
-
-- issue ID
-- owner
-- workflow state
-- action record
-- verification status
-- timestamps
-- evidence references
-- processed event IDs
-
-### Memory Bank
-
-Use later for longer-lived context such as:
-
-- recurring operational patterns
-- user/workflow preferences
-- context from earlier shifts
-- prior issue history useful to agent reasoning
-
-Memory must never silently overwrite authoritative operational state.
-
----
-
-## 16. Cost discipline
-
-Current budget alert: **THB 500/month**.
-
-Rules:
-
-1. use free tiers/allowances wherever practical
-2. use hackathon credit when approved
-3. avoid idle always-on infrastructure where serverless/event-driven alternatives exist
-4. do not enable services merely because they might be useful later
-5. inspect billing before introducing high-volume Gemini calls or persistent services
-6. demo/test with tiny synthetic workloads
-
----
-
-## 17. Immediate next milestones
-
-Unless research materially changes the product direction, the recommended order is:
-
-### Foundation completion
-
-1. verify current main + clean working tree
-2. migrate deprecated client only if current Agent Platform SDK path is clear and tested
-3. add automated tests around state transitions, event contracts, idempotency, and worker routing
-4. rename `*-test` Pub/Sub resources when moving from prototype to stable demo infrastructure
-5. introduce structured logging/trace correlation IDs
-
-### Fleet expansion
-
-6. create explicit dispatcher/routing contract
-7. add second specialist only after its pain point is validated by research/interview
-8. add verifier as a distinct authority boundary
-9. add evidence objects so `VERIFYING → CLOSED` is proof-driven
-10. add closure/follow-up sentinel for cross-shift continuation
-
-### Enterprise platform features
-
-11. integrate Memory Bank intentionally
-12. integrate Agent Registry / lifecycle
-13. integrate Agent Gateway
-14. integrate Model Armor
-15. expand Agent Identity/IAM policies per specialist
-16. add OpenTelemetry / Agent Observability traces suitable for the demo
-
-### Product/demo layer
-
-17. multimodal handover intake
-18. compact operations UI showing issues, owners, states, evidence, and agent activity
-19. simulated time advance / next-shift continuation
-20. attack/permission-denial demo
-21. final 4-minute demo script
-22. reproducible README/setup instructions
-23. architecture diagram
-24. public build article and qualifying social post for hackathon bonus points
-
----
-
-## 18. Session startup protocol for ChatGPT / Codex / other agents
-
-At the beginning of any future development session:
-
-1. **Read this file completely.**
-2. Inspect current repository state rather than assuming this document’s last SHA is still current.
-3. Run/obtain:
-
-```bash
-cd ~/next-shift
-source .venv/bin/activate
-git status
-git branch --show-current
-git log -5 --oneline
-git fetch origin
-git status -sb
-```
-
-4. Verify Google project before Cloud mutations:
-
-```bash
 gcloud config get-value project
 gcloud billing projects describe next-shift-506004
-```
+14. Agent Runtime
 
-5. Never guess paths, resource IDs, current state, or deployed versions when they can be inspected.
-6. Preserve the architecture boundaries in this document unless there is a concrete reason to change them.
-7. If a new requirement conflicts with this document, call out the conflict explicitly before changing code.
-8. After a material architecture/resource change, update this document so future sessions inherit the new truth.
+Previously verified Agent Runtime resource:
 
----
+projects/963749706976/locations/asia-southeast1/reasoningEngines/8140616966286082048
 
-## 19. What success looks like
+Previously verified properties include:
 
-A strong final Next Shift build is not a collection of chatbots.
+Google ADK deployment
+Python 3.12 package
+managed Agent Identity enabled
+telemetry enabled
+remote query execution working
 
-It is a visible, event-driven enterprise system where:
+Do not assume this runtime resource remains unchanged.
 
-- messy handover input becomes structured operational work
-- agents delegate based on institutional responsibility
-- permissions prevent an agent from doing work outside its role
-- durable state survives sessions and shifts
-- async events wake the right specialist without a human babysitter
-- duplicate events do not duplicate work
-- poisoned events retry safely and land in a DLQ
-- work is not closed without evidence
-- security failures are visible and auditable
-- judges can watch real state change live on Google Cloud
+Verify before deployment or modification.
 
-The defining engineering principle is:
+15. Firestore
 
-> **No agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable.**
+Expected database:
+
+projects/next-shift-506004/databases/(default)
+
+Firestore is authoritative operational workflow truth.
+
+Use it for facts such as:
+
+issue ID
+owner
+state
+workflow input
+action records
+evidence references
+verification status
+timestamps
+history
+processed event IDs
+continuity state
+
+LLM context or Memory Bank must not override these values.
+
+16. Memory
+
+Memory and operational truth are separate concepts.
+
+Firestore
+
+Use for deterministic operational truth.
+
+Memory Bank
+
+Potential future use:
+
+recurring operational patterns
+preferences
+useful context from prior shifts
+non-authoritative historical context
+
+Memory Bank must never silently mutate or replace Firestore state.
+
+Only integrate it when it materially improves the product.
+
+17. Development philosophy
+
+The preferred development cycle is:
+
+build
+→ syntax-check
+→ real integration run
+→ inspect authoritative state
+→ commit
+→ move on
+
+Do not turn Next Shift into a test-count project.
+
+Tests are appropriate where they protect important behavior such as:
+
+workflow state integrity
+event contracts
+authorization boundaries
+idempotency
+retry behavior
+evidence rules
+independent verification
+security regressions
+
+Do not create dozens of trivial tests merely to increase coverage.
+
+18. Editing conventions
+
+Repository:
+
+/home/patrick/next-shift
+
+Virtual environment:
+
+/home/patrick/next-shift/.venv
+
+Before work:
+
+cd /home/patrick/next-shift
+source /home/patrick/next-shift/.venv/bin/activate
+
+
+git status
+git branch --show-current
+git fetch origin
+git status -sb
+git log -12 --oneline
+
+For substantive interactive Python edits:
+
+nano /full/path/to/file.py
+
+Prefer full-file replacements over fragile sed or indentation-sensitive patches.
+
+Verify paths before use.
+
+19. Git baseline
+
+Current verified baseline:
+
+317e7e4d5f73d77418508dd2a94cf6f654631d7b
+
+Commit:
+
+Add closed-loop Facilities coordination
+
+At verification time:
+
+main == origin/main
+
+Recent fleet milestones:
+
+317e7e4 Add closed-loop Facilities coordination
+0717cb3 Add closed-loop patient transport coordination
+4fd44f7 Add multi-issue operational handover intake
+95eca64 Add durable cross-shift continuity
+4743b40 Add closed-loop EVS throughput coordination
+e3f1b62 Add closed-loop LanguageAccess coordination
+4e646ca Add closed-loop DME discharge coordination
+a503eee Add evidence-backed independent verification
+b6cadef Make AssetLogistics workflow resumable
+95a3f50 Bind specialist workers to filtered subscriptions
+5ed1cad Add owner-aware Pub/Sub routing metadata
+c43b22a Add AssetLogistics wheelchair workflow
+fc0cda4 Integrate facilities worker with dispatcher routing
+7a10497 Add deterministic operational routing contract
+8642044 Add deterministic workflow regression tests
+
+Never assume this remains the latest commit in a future session.
+
+Verify origin/main.
+
+20. Phase 2 — current objective
+
+The operational-fleet phase is complete.
+
+Current objective:
+
+Security + UI + observability + deployment + final product polish
+
+Priority order:
+
+A. Shared authorization
+
+Build reusable least-privilege enforcement.
+
+Examples:
+
+LanguageAccess attempts Facilities action
+→ DENIED
+→ auditable security record
+Facilities attempts DME action
+→ DENIED
+→ auditable security record
+
+Authorization must not rely solely on agent prompts.
+
+Prefer enforcement at capability, workflow, tool, identity, IAM, and gateway boundaries.
+
+B. Fortified Enterprise Fleet security
+
+Integrate relevant Google platform capabilities where practical and real:
+
+Agent Identity / IAM
+Agent Gateway where appropriate
+Model Armor
+prompt-injection protection
+unauthorized-resource denial
+auditable security events
+
+Do not bolt on features solely for presentation.
+
+C. Operations UI
+
+Build a usable Next Shift operations interface.
+
+Minimum views:
+
+handover intake
+issue board
+specialist owner
+current state
+next action
+SLA/timing
+evidence
+verification state
+history
+blocked / human-review work
+cross-shift continuity
+incoming-shift snapshot
+
+The interface should show what Next Shift actually did, not merely visualize logs.
+
+D. Observability
+
+Operators and judges should be able to trace:
+
+handover
+→ issue
+→ event
+→ route
+→ specialist
+→ action
+→ evidence
+→ verifier
+→ closure
+
+Use real Google Agent Platform / OpenTelemetry observability where practical.
+
+Do not fabricate telemetry.
+
+E. Persistent platform integration
+
+Review deliberately:
+
+Agent Runtime
+Agent Identity
+Memory Bank
+Agent Registry / lifecycle
+Agent Gateway
+Model Armor
+observability
+
+Only integrate features that provide genuine architectural value.
+
+F. Deployment
+
+Build stable reproducible deployment.
+
+Requirements:
+
+no manually babysat background workers
+event-driven/serverless specialists where practical
+stable backend
+stable frontend
+reproducible configuration
+minimal operating cost
+synthetic data only
+G. Full product acceptance
+
+Run a deployed multi-issue handover containing several simultaneous operational problems.
+
+Strong synthetic acceptance scenario:
+
+missing wheelchair
+patient transport
+Spanish interpreter
+home oxygen
+EVS turnaround
+leaking sink
+prohibited medication request
+unresolved work surviving shift change
+
+The workflows must actually execute and persist outcomes.
+
+H. Product polish
+
+Only after the deployed product works:
+
+UX polish
+architecture diagram
+README
+deployment documentation
+public explanation
+hackathon submission
+final demo/video
+
+Do not optimize the video before the product.
+
+21. Current security milestone
+
+The immediate new engineering milestone is:
+
+Shared, technically enforced, auditable least-privilege authorization across the specialist fleet.
+
+Current workflows contain local owner checks.
+
+The next implementation should centralize these rules without weakening the existing deterministic checks.
+
+Desired behavior:
+
+authorized specialist
+→ action allowed
+→ normal workflow continues
+wrong specialist / capability
+→ action denied
+→ no operational state mutation
+→ denial persisted as security evidence/audit record
+
+Authorization failures must be inspectable later by operators and judges.
+
+22. What success looks like
+
+Next Shift must not become a collection of chatbots.
+
+The finished product should visibly prove that:
+
+messy handover input becomes structured work
+several issues can emerge from one handover
+each issue is routed to the correct specialist
+specialists have constrained authority
+unauthorized actions are denied
+operational state survives shifts
+async events wake the correct worker
+duplicate events do not duplicate work
+failures retry safely
+poisoned events reach a DLQ
+specialists cannot self-certify completion
+trusted evidence is required
+an independent verifier controls closure
+clinical requests are blocked
+security failures are auditable
+operators can see the entire lifecycle
+the system runs on a stable deployed Google Cloud architecture
+
+The defining engineering principle remains:
+
+No agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable.
