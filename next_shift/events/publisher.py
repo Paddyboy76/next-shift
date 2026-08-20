@@ -7,6 +7,7 @@ from typing import Any
 
 from google.cloud import pubsub_v1
 
+from next_shift.domain.routing import validate_operational_owner
 from next_shift.events.contracts import (
     HANDOVER_RECEIVED_EVENT_TYPE,
     HANDOVER_RECEIVED_EVENT_VERSION,
@@ -24,6 +25,13 @@ def _now_iso() -> str:
 def publish_handover_received(
     issue: dict[str, Any],
 ) -> dict[str, str]:
+    owner = issue.get("owner")
+
+    if not isinstance(owner, str) or not owner.strip():
+        raise ValueError("Operational owner is required for publication")
+
+    validate_operational_owner(owner)
+
     publisher = pubsub_v1.PublisherClient()
 
     topic_path = publisher.topic_path(
@@ -39,7 +47,7 @@ def publish_handover_received(
         "event_version": HANDOVER_RECEIVED_EVENT_VERSION,
         "occurred_at": _now_iso(),
         "issue_id": issue["id"],
-        "owner": issue.get("owner"),
+        "owner": owner,
         "state": issue["state"],
         "source_type": issue["source_type"],
         "source_reference": issue["source_reference"],
@@ -54,6 +62,7 @@ def publish_handover_received(
         event_type=HANDOVER_RECEIVED_EVENT_TYPE,
         event_version=HANDOVER_RECEIVED_EVENT_VERSION,
         issue_id=issue["id"],
+        owner=owner,
     )
 
     return {

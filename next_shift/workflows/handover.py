@@ -5,6 +5,7 @@ from typing import Any
 
 from google.cloud import firestore
 
+from next_shift.domain.routing import validate_operational_owner
 from next_shift.domain.states import (
     ALLOWED_TRANSITIONS,
     VALID_STATES,
@@ -32,6 +33,11 @@ def create_issue(
     owner: str | None = None,
     human_approval_required: bool = False,
 ) -> dict[str, Any]:
+    if not isinstance(owner, str) or not owner.strip():
+        raise ValueError("Operational owner is required")
+
+    validate_operational_owner(owner)
+
     now = _now_iso()
 
     issue = create_issue_document(
