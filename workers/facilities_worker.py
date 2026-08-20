@@ -6,15 +6,15 @@ import traceback
 
 from google.cloud import pubsub_v1
 
-from next_shift.domain.routing import worker_for_owner
-from next_shift.events.routing import route_handover_received_event
+from next_shift.events.routing import (
+    route_handover_received_event,
+)
 from next_shift.persistence.processed_events import (
     event_already_processed,
     record_processed_event,
 )
-from next_shift.workflows.handover import (
-    get_issue,
-    transition_issue,
+from next_shift.workflows.facilities import (
+    advance_facilities_issue,
 )
 
 
@@ -25,33 +25,17 @@ WORKER_NAME = "facilities_worker"
 
 def process_facilities_issue(
     issue_id: str,
+    *,
+    facility_type: str,
+    location: str,
 ) -> str:
-    issue = get_issue(issue_id)
-
-    routed_worker = worker_for_owner(issue["owner"])
-
-    if routed_worker != WORKER_NAME:
-        return "SKIPPED_NON_FACILITIES"
-
-    if issue["state"] != "RECEIVED":
-        return f"SKIPPED_STATE_{issue['state']}"
-
-    updated = transition_issue(
-        issue_id=issue_id,
-        new_state="TRIAGED",
-        actor=WORKER_NAME,
-        reason=(
-            "Versioned Pub/Sub handover event routed a newly received "
-            "Facilities-owned issue to the Facilities workflow."
-        ),
+    result = advance_facilities_issue(
+        issue_id,
+        facility_type=facility_type,
+        location=location,
     )
 
-    print(
-        f"TRIAGED issue_id={issue_id} "
-        f"state={updated['state']}"
-    )
-
-    return "TRIAGED"
+    return result["outcome"]
 
 
 def callback(
@@ -59,7 +43,8 @@ def callback(
 ) -> None:
     print(
         f"RECEIVED message_id={message.message_id} "
-        f"delivery_attempt={message.delivery_attempt}"
+        f"delivery_attempt={message.delivery_attempt}",
+        flush=True,
     )
 
     try:
@@ -67,29 +52,41 @@ def callback(
             message.data.decode("utf-8")
         )
 
-        route = route_handover_received_event(payload)
+        route = route_handover_received_event(
+            payload
+        )
+
+        if route["worker"] != WORKER_NAME:
+            message.ack()
+            return
 
         event_id = route["event_id"]
         issue_id = route["issue_id"]
 
-        if route["worker"] != WORKER_NAME:
-            print(
-                f"ACK_NOT_ROUTED event_id={event_id} "
-                f"issue_id={issue_id} "
-                f"target_worker={route['worker']}"
-            )
-            message.ack()
-            return
-
         if event_already_processed(event_id):
-            print(
-                f"ACK_DUPLICATE event_id={event_id} "
-                f"issue_id={issue_id}"
-            )
             message.ack()
             return
 
-        outcome = process_facilities_issue(issue_id)
+        workflow_input = payload.get(
+            "workflow_input",
+            {},
+        )
+
+        facility_type = workflow_input.get(
+            "facility_type",
+            "plumbing",
+        )
+
+        location = workflow_input.get(
+            "location",
+            "Room 402",
+        )
+
+        outcome = process_facilities_issue(
+            issue_id,
+            facility_type=facility_type,
+            location=location,
+        )
 
         record_processed_event(
             event_id=event_id,
@@ -104,23 +101,24 @@ def callback(
         print(
             f"ACK_SUCCESS event_id={event_id} "
             f"issue_id={issue_id} "
-            f"outcome={outcome}"
+            f"outcome={outcome}",
+            flush=True,
         )
 
     except json.JSONDecodeError as exc:
         print(
-            f"INVALID_JSON message_id={message.message_id}: {exc}",
+            f"INVALID_JSON: {exc}",
             file=sys.stderr,
+            flush=True,
         )
         message.nack()
 
     except Exception as exc:
         print(
-            f"PROCESSING_FAILED message_id={message.message_id}: "
-            f"{exc}",
+            f"PROCESSING_FAILED: {exc}",
             file=sys.stderr,
+            flush=True,
         )
-
         traceback.print_exc()
         message.nack()
 
@@ -133,20 +131,22 @@ def main() -> None:
         SUBSCRIPTION_ID,
     )
 
-    print(f"Listening on {subscription_path}")
+    print(
+        f"Listening on {subscription_path}",
+        flush=True,
+    )
 
-    streaming_pull_future = subscriber.subscribe(
+    future = subscriber.subscribe(
         subscription_path,
         callback=callback,
     )
 
     try:
-        streaming_pull_future.result()
+        future.result()
 
     except KeyboardInterrupt:
-        print("\nStopping Facilities worker...")
-        streaming_pull_future.cancel()
-        streaming_pull_future.result()
+        future.cancel()
+        future.result()
 
     finally:
         subscriber.close()
