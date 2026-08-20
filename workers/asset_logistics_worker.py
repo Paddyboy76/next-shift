@@ -12,21 +12,18 @@ from next_shift.persistence.processed_events import (
     record_processed_event,
 )
 from next_shift.workflows.asset_logistics import (
-    triage_asset_issue,
+    advance_asset_issue,
 )
-
 
 PROJECT_ID = "next-shift-506004"
 SUBSCRIPTION_ID = "next-shift-asset-logistics"
 WORKER_NAME = "asset_logistics_worker"
 
-
 def process_asset_logistics_issue(
     issue_id: str,
 ) -> str:
-    triage_asset_issue(issue_id)
-    return "TRIAGED"
-
+    result = advance_asset_issue(issue_id)
+    return result["outcome"]
 
 def callback(
     message: pubsub_v1.subscriber.message.Message,

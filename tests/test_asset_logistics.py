@@ -2,10 +2,9 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
-from next_shift.domain.assets import (
-    find_available_asset,
-)
+from next_shift.domain.assets import find_available_asset
 from next_shift.workflows.asset_logistics import (
+    advance_asset_issue,
     locate_standard_wheelchair,
     triage_asset_issue,
 )
@@ -160,21 +159,172 @@ class AssetWorkflowTests(unittest.TestCase):
             "ASSIGNED",
         )
 
+    @patch(
+        "next_shift.workflows.asset_logistics.locate_standard_wheelchair"
+    )
+    @patch(
+        "next_shift.workflows.asset_logistics.triage_asset_issue"
+    )
+    @patch("next_shift.workflows.asset_logistics.get_issue")
+    def test_received_issue_advances_to_assigned(
+        self,
+        mock_get_issue: Mock,
+        mock_triage: Mock,
+        mock_locate: Mock,
+    ) -> None:
+        mock_get_issue.return_value = {
+            "id": "issue-asset-001",
+            "owner": "AssetLogistics",
+            "state": "RECEIVED",
+        }
+
+        mock_triage.return_value = {
+            "id": "issue-asset-001",
+            "owner": "AssetLogistics",
+            "state": "TRIAGED",
+        }
+
+        mock_locate.return_value = {
+            "issue": {
+                "id": "issue-asset-001",
+                "owner": "AssetLogistics",
+                "state": "ASSIGNED",
+            },
+            "asset": {
+                "asset_id": "WC-041",
+                "asset_type": "standard_wheelchair",
+                "location": "Floor 3 - Lift Lobby",
+                "available": True,
+            },
+        }
+
+        result = advance_asset_issue("issue-asset-001")
+
+        self.assertEqual(result["outcome"], "ASSIGNED")
+        self.assertEqual(
+            result["issue"]["state"],
+            "ASSIGNED",
+        )
+        self.assertEqual(
+            result["asset"]["asset_id"],
+            "WC-041",
+        )
+
+        mock_triage.assert_called_once_with(
+            "issue-asset-001"
+        )
+        mock_locate.assert_called_once_with(
+            "issue-asset-001"
+        )
+
+    @patch(
+        "next_shift.workflows.asset_logistics.locate_standard_wheelchair"
+    )
+    @patch(
+        "next_shift.workflows.asset_logistics.triage_asset_issue"
+    )
+    @patch("next_shift.workflows.asset_logistics.get_issue")
+    def test_triaged_issue_resumes_at_assignment(
+        self,
+        mock_get_issue: Mock,
+        mock_triage: Mock,
+        mock_locate: Mock,
+    ) -> None:
+        mock_get_issue.return_value = {
+            "id": "issue-asset-001",
+            "owner": "AssetLogistics",
+            "state": "TRIAGED",
+        }
+
+        mock_locate.return_value = {
+            "issue": {
+                "id": "issue-asset-001",
+                "owner": "AssetLogistics",
+                "state": "ASSIGNED",
+            },
+            "asset": {
+                "asset_id": "WC-041",
+                "asset_type": "standard_wheelchair",
+                "location": "Floor 3 - Lift Lobby",
+                "available": True,
+            },
+        }
+
+        result = advance_asset_issue("issue-asset-001")
+
+        self.assertEqual(result["outcome"], "ASSIGNED")
+        mock_triage.assert_not_called()
+        mock_locate.assert_called_once_with(
+            "issue-asset-001"
+        )
+
+    @patch(
+        "next_shift.workflows.asset_logistics.locate_standard_wheelchair"
+    )
+    @patch(
+        "next_shift.workflows.asset_logistics.triage_asset_issue"
+    )
+    @patch("next_shift.workflows.asset_logistics.get_issue")
+    def test_assigned_issue_is_idempotent(
+        self,
+        mock_get_issue: Mock,
+        mock_triage: Mock,
+        mock_locate: Mock,
+    ) -> None:
+        mock_get_issue.return_value = {
+            "id": "issue-asset-001",
+            "owner": "AssetLogistics",
+            "state": "ASSIGNED",
+        }
+
+        result = advance_asset_issue("issue-asset-001")
+
+        self.assertEqual(result["outcome"], "ASSIGNED")
+        self.assertEqual(
+            result["issue"]["state"],
+            "ASSIGNED",
+        )
+        self.assertIsNone(result["asset"])
+
+        mock_triage.assert_not_called()
+        mock_locate.assert_not_called()
+
+    @patch("next_shift.workflows.asset_logistics.get_issue")
+    def test_advance_rejects_wrong_owner(
+        self,
+        mock_get_issue: Mock,
+    ) -> None:
+        mock_get_issue.return_value = {
+            "id": "issue-001",
+            "owner": "Facilities",
+            "state": "RECEIVED",
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "AssetLogistics cannot process owner",
+        ):
+            advance_asset_issue("issue-001")
+
 
 class AssetWorkerTests(unittest.TestCase):
     @patch(
-        "workers.asset_logistics_worker.triage_asset_issue"
+        "workers.asset_logistics_worker.advance_asset_issue"
     )
-    def test_worker_triages_routed_issue(
+    def test_worker_advances_routed_issue(
         self,
-        mock_triage: Mock,
+        mock_advance: Mock,
     ) -> None:
+        mock_advance.return_value = {
+            "outcome": "ASSIGNED",
+        }
+
         result = process_asset_logistics_issue(
             "issue-asset-001"
         )
 
-        self.assertEqual(result, "TRIAGED")
-        mock_triage.assert_called_once_with(
+        self.assertEqual(result, "ASSIGNED")
+        mock_advance.assert_called_once_with(
             "issue-asset-001"
         )
 
@@ -183,7 +333,7 @@ class AssetWorkerTests(unittest.TestCase):
     )
     @patch(
         "workers.asset_logistics_worker.process_asset_logistics_issue",
-        return_value="TRIAGED",
+        return_value="ASSIGNED",
     )
     @patch(
         "workers.asset_logistics_worker.event_already_processed",
@@ -204,7 +354,15 @@ class AssetWorkerTests(unittest.TestCase):
         mock_process.assert_called_once_with(
             "issue-asset-001"
         )
-        mock_record.assert_called_once()
+
+        mock_record.assert_called_once_with(
+            event_id="event-asset-001",
+            message_id="message-asset-001",
+            issue_id="issue-asset-001",
+            outcome="ASSIGNED",
+            worker=WORKER_NAME,
+        )
+
         message.ack.assert_called_once()
         message.nack.assert_not_called()
 
@@ -234,6 +392,7 @@ class AssetWorkerTests(unittest.TestCase):
         mock_already.assert_not_called()
         mock_process.assert_not_called()
         mock_record.assert_not_called()
+
         message.ack.assert_called_once()
         message.nack.assert_not_called()
 

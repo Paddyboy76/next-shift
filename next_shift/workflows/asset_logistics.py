@@ -68,3 +68,37 @@ def locate_standard_wheelchair(
         "issue": updated,
         "asset": asset,
     }
+
+
+def advance_asset_issue(
+    issue_id: str,
+) -> dict[str, Any]:
+    issue = get_issue(issue_id)
+
+    if issue["owner"] != "AssetLogistics":
+        raise ValueError(
+            f"AssetLogistics cannot process owner: {issue['owner']}"
+        )
+
+    if issue["state"] == "RECEIVED":
+        issue = triage_asset_issue(issue_id)
+
+    if issue["state"] == "TRIAGED":
+        result = locate_standard_wheelchair(issue_id)
+
+        return {
+            "outcome": "ASSIGNED",
+            "issue": result["issue"],
+            "asset": result["asset"],
+        }
+
+    if issue["state"] == "ASSIGNED":
+        return {
+            "outcome": "ASSIGNED",
+            "issue": issue,
+            "asset": None,
+        }
+
+    raise ValueError(
+        f"AssetLogistics cannot resume issue from state: {issue['state']}"
+    )
