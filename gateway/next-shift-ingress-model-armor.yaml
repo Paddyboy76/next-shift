@@ -1,0 +1,11 @@
+name: next-shift-ingress-model-armor
+service: modelarmor.asia-southeast1.rep.googleapis.com
+metadata:
+  model_armor_settings: '[
+    {
+      "request_template_id": "projects/next-shift-506004/locations/asia-southeast1/templates/next-shift-intake-guard",
+      "response_template_id": "projects/next-shift-506004/locations/asia-southeast1/templates/next-shift-intake-guard"
+    }
+  ]'
+failOpen: false
+timeout: 5s

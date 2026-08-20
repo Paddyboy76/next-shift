@@ -1,0 +1,10 @@
+name: next-shift-ingress-model-armor-policy
+target:
+  resources:
+    - "projects/next-shift-506004/locations/asia-southeast1/agentGateways/next-shift-ingress"
+policyProfile: CONTENT_AUTHZ
+action: CUSTOM
+customProvider:
+  authzExtension:
+    resources:
+      - "projects/next-shift-506004/locations/asia-southeast1/authzExtensions/next-shift-ingress-model-armor"
