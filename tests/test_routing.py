@@ -132,3 +132,23 @@ class DispatcherContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WorkerSubscriptionTests(unittest.TestCase):
+    def test_facilities_worker_uses_filtered_subscription(self) -> None:
+        from workers.facilities_worker import SUBSCRIPTION_ID
+
+        self.assertEqual(
+            SUBSCRIPTION_ID,
+            "next-shift-facilities",
+        )
+
+    def test_asset_logistics_worker_uses_filtered_subscription(
+        self,
+    ) -> None:
+        from workers.asset_logistics_worker import SUBSCRIPTION_ID
+
+        self.assertEqual(
+            SUBSCRIPTION_ID,
+            "next-shift-asset-logistics",
+        )

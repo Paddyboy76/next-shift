@@ -17,7 +17,7 @@ from next_shift.workflows.asset_logistics import (
 
 
 PROJECT_ID = "next-shift-506004"
-SUBSCRIPTION_ID = "next-shift-handover-received-test"
+SUBSCRIPTION_ID = "next-shift-asset-logistics"
 WORKER_NAME = "asset_logistics_worker"
 
 

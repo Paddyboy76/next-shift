@@ -19,7 +19,7 @@ from next_shift.workflows.handover import (
 
 
 PROJECT_ID = "next-shift-506004"
-SUBSCRIPTION_ID = "next-shift-handover-received-test"
+SUBSCRIPTION_ID = "next-shift-facilities"
 WORKER_NAME = "facilities_worker"
 
 
