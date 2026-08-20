@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+  <title>Next Shift — Operations Control</title>
+  <link
+    rel="stylesheet"
+    href="/static/app.css"
+  >
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="brand-row">
+        <span class="brand-mark">NS</span>
+        <div>
+          <h1>Next Shift</h1>
+          <p>Autonomous Operations Control</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="security-strip">
+      <span>● Live Firestore</span>
+      <span>Agent Gateway</span>
+      <span>Model Armor v3</span>
+      <span>State Authority</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-grid">
+      <article class="panel intake-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Handover intake</span>
+            <h2>What is being left for the next shift?</h2>
+          </div>
+          <span class="synthetic-badge">
+            Synthetic data only
+          </span>
+        </div>
+
+        <textarea
+          id="handover"
+          placeholder="Example: Room 402 needs a Spanish interpreter. We still cannot find a standard wheelchair. Home oxygen is pending. The room needs EVS after discharge and the sink is leaking..."
+        ></textarea>
+
+        <div class="intake-actions">
+          <button id="submit-handover">
+            Send to Next Shift
+          </button>
+          <div id="intake-status"></div>
+        </div>
+      </article>
+
+      <article class="panel metric-panel">
+        <span class="eyebrow">Operational state</span>
+
+        <div class="metrics">
+          <div>
+            <strong id="metric-open">—</strong>
+            <span>Open work</span>
+          </div>
+          <div>
+            <strong id="metric-verifying">—</strong>
+            <span>Verifying</span>
+          </div>
+          <div>
+            <strong id="metric-closed">—</strong>
+            <span>Closed</span>
+          </div>
+          <div>
+            <strong id="metric-review">—</strong>
+            <span>Human review</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <div class="board-area">
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">Live issue board</span>
+            <h2>Operational work</h2>
+          </div>
+          <span id="last-refresh">
+            Loading…
+          </span>
+        </div>
+
+        <div
+          id="board"
+          class="board"
+        ></div>
+      </div>
+
+      <aside class="panel shift-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Continuity</span>
+            <h2>Shift snapshots</h2>
+          </div>
+        </div>
+
+        <div id="shift-list"></div>
+      </aside>
+    </section>
+  </main>
+
+  <div
+    id="drawer-backdrop"
+    class="drawer-backdrop hidden"
+  ></div>
+
+  <aside
+    id="drawer"
+    class="drawer hidden"
+  >
+    <button
+      id="drawer-close"
+      class="drawer-close"
+    >
+      ×
+    </button>
+
+    <div id="drawer-content"></div>
+  </aside>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
