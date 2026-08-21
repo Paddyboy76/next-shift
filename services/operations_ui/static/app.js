@@ -22,6 +22,14 @@ const nextActions = {
   FAILED: "Review failure",
 };
 
+const humanReachLabels = {
+  PENDING: "Queued for frontline delivery",
+  DELIVERED: "Delivered — awaiting frontline acknowledgement",
+  ACKNOWLEDGED: "Acknowledged by frontline worker",
+  BLOCKED: "Frontline worker reported blocked",
+  COMPLETION_CLAIMED: "Human completion claimed — evidence still required",
+};
+
 const board = document.querySelector("#board");
 const drawer = document.querySelector("#drawer");
 const backdrop = document.querySelector("#drawer-backdrop");
@@ -118,6 +126,42 @@ function actionControls(issue) {
   return "";
 }
 
+function humanReachSection(delivery) {
+  if (!delivery) {
+    return `<div class="detail-section">
+      <h3>Human Reach</h3>
+      <div class="empty">No frontline delivery recorded for this issue.</div>
+    </div>`;
+  }
+
+  const status = String(delivery.delivery_status || "PENDING");
+  const responses = Array.isArray(delivery.response_history)
+    ? delivery.response_history.slice().reverse()
+    : [];
+
+  const completionWarning = status === "COMPLETION_CLAIMED"
+    ? `<div class="timeline-item"><strong>Not verified complete</strong><br>A human completion claim is recorded, but trusted evidence and independent verification are still required before this issue can close.</div>`
+    : "";
+
+  return `<div class="detail-section">
+    <h3>Human Reach</h3>
+    <div class="timeline-item">
+      <strong>${escapeHtml(humanReachLabels[status] || status)}</strong><br>
+      Destination: ${escapeHtml(delivery.destination_display_name || "Resolving…")}<br>
+      WHO: ${escapeHtml(delivery.who || "—")}<br>
+      WHAT: ${escapeHtml(delivery.what || "—")}<br>
+      WHERE: ${escapeHtml(delivery.where || "—")}<br>
+      Work order: ${escapeHtml(delivery.work_order || "—")}
+    </div>
+    ${completionWarning}
+    ${responses.length ? responses.map((item) => `<div class="timeline-item">
+      <strong>${escapeHtml(String(item.to_status || item.action || "Response").replaceAll("_", " "))}</strong><br>
+      ${escapeHtml(item.actor_display_name || item.actor_user || "Frontline worker")}<br>
+      <small>${escapeHtml(shortTime(item.at))}</small>
+    </div>`).join("") : '<div class="empty">No frontline response yet</div>'}
+  </div>`;
+}
+
 async function runIssueAction(issueId, action, button) {
   const original = button.textContent;
   button.disabled = true;
@@ -139,11 +183,13 @@ async function openIssue(issueId) {
   const issue = payload.issue;
   const evidence = payload.evidence || [];
   const transitions = payload.transitions || [];
+  const humanReach = payload.human_reach || null;
 
   drawerContent.innerHTML = `
     <span class="eyebrow">${escapeHtml(issue.owner)}</span>
     <h2>${escapeHtml(issue.title || issue.id)}</h2>
     <div class="detail-section"><h3>Current state</h3><div class="timeline-item"><strong>${escapeHtml(issue.state)}</strong><br>${escapeHtml(nextActions[issue.state] || "")}</div></div>
+    ${humanReachSection(humanReach)}
     ${actionControls(issue)}
     <div class="detail-section"><h3>Operational history</h3>
       ${(issue.history || []).length ? issue.history.slice().reverse().map((event) => `<div class="timeline-item"><strong>${escapeHtml(event.from || "START")} → ${escapeHtml(event.to)}</strong><br>${escapeHtml(event.reason || "")}<br><small>${escapeHtml(event.actor || "")} · ${escapeHtml(shortTime(event.at))}</small></div>`).join("") : '<div class="empty">No history</div>'}
