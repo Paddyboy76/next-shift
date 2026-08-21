@@ -7,17 +7,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 
-OperationalOwner = Literal[
-    "Facilities",
-    "AssetLogistics",
-    "LanguageAccess",
-    "DischargeDME",
-    "EVSThroughput",
-    "PatientTransport",
-]
-
-
-class IntakeIssueProposal(BaseModel):
+class _IssueBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(
@@ -32,17 +22,6 @@ class IntakeIssueProposal(BaseModel):
             "What remains unresolved, using only facts from the handover."
         ),
     )
-    owner: OperationalOwner = Field(
-        description="The single canonical specialist owner for this issue."
-    )
-    workflow_input: dict[str, str] = Field(
-        default_factory=dict,
-        description=(
-            "Small owner-specific string fields needed for specialist "
-            "execution, such as room, language, destination, equipment_type, "
-            "origin, transport_type, facility_type, or location."
-        ),
-    )
     human_approval_required: bool = Field(
         default=False,
         description=(
@@ -52,15 +31,115 @@ class IntakeIssueProposal(BaseModel):
     )
 
 
+class FacilitiesWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    facility_type: Literal[
+        "plumbing",
+        "air_conditioning",
+        "electrical",
+        "room_maintenance",
+    ]
+    location: str = Field(min_length=1, max_length=200)
+
+
+class FacilitiesIssue(_IssueBase):
+    workflow_input: FacilitiesWorkflowInput
+
+
+class AssetLogisticsWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    destination: str = Field(min_length=1, max_length=200)
+
+
+class AssetLogisticsIssue(_IssueBase):
+    workflow_input: AssetLogisticsWorkflowInput
+
+
+class LanguageAccessWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    language: str = Field(min_length=1, max_length=80)
+    service_location: str = Field(min_length=1, max_length=200)
+
+
+class LanguageAccessIssue(_IssueBase):
+    workflow_input: LanguageAccessWorkflowInput
+
+
+class DischargeDMEWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    equipment_type: Literal[
+        "home_oxygen",
+        "hospital_bed",
+        "walker",
+        "wheelchair",
+    ]
+    delivery_destination: str = Field(min_length=1, max_length=200)
+
+
+class DischargeDMEIssue(_IssueBase):
+    workflow_input: DischargeDMEWorkflowInput
+
+
+class EVSWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room: str = Field(min_length=1, max_length=200)
+    zone: Literal[
+        "North Tower",
+        "South Tower",
+    ] | None = None
+
+
+class EVSThroughputIssue(_IssueBase):
+    workflow_input: EVSWorkflowInput
+
+
+class PatientTransportWorkflowInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    origin: str = Field(min_length=1, max_length=200)
+    destination: str = Field(min_length=1, max_length=200)
+    transport_type: Literal[
+        "wheelchair",
+        "walking_assist",
+        "stretcher",
+    ]
+
+
+class PatientTransportIssue(_IssueBase):
+    workflow_input: PatientTransportWorkflowInput
+
+
 class IntakeResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    issues: list[IntakeIssueProposal] = Field(
+    facilities: list[FacilitiesIssue] = Field(
         default_factory=list,
-        description=(
-            "Every distinct unresolved permitted non-clinical operational "
-            "issue found in the handover."
-        ),
+        description="Every unresolved Facilities issue.",
+    )
+    asset_logistics: list[AssetLogisticsIssue] = Field(
+        default_factory=list,
+        description="Every unresolved AssetLogistics issue.",
+    )
+    language_access: list[LanguageAccessIssue] = Field(
+        default_factory=list,
+        description="Every unresolved LanguageAccess issue.",
+    )
+    discharge_dme: list[DischargeDMEIssue] = Field(
+        default_factory=list,
+        description="Every unresolved DischargeDME issue.",
+    )
+    evs_throughput: list[EVSThroughputIssue] = Field(
+        default_factory=list,
+        description="Every unresolved EVSThroughput issue.",
+    )
+    patient_transport: list[PatientTransportIssue] = Field(
+        default_factory=list,
+        description="Every unresolved PatientTransport issue.",
     )
     rejected_clinical_requests: list[str] = Field(
         default_factory=list,
