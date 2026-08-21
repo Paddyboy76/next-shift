@@ -148,6 +148,39 @@ def _structured_results(
     return results
 
 
+def _event_from_stream_line(
+    raw_line: str,
+) -> Any | None:
+    line = raw_line.strip()
+
+    if not line or line.startswith(":"):
+        return None
+
+    if line.startswith("data:"):
+        payload = line[5:].strip()
+    elif line.startswith(
+        (
+            "event:",
+            "id:",
+            "retry:",
+        )
+    ):
+        return None
+    else:
+        # The deployed Agent Runtime currently returns one bare JSON
+        # object per line even when alt=sse is requested. Accept both
+        # that real shape and conventional SSE data: framing.
+        payload = line
+
+    if not payload or payload == "[DONE]":
+        return None
+
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError:
+        return None
+
+
 def _dedupe_proposals(
     proposals: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -225,19 +258,11 @@ def submit_handover(
         if not raw_line:
             continue
 
-        line = raw_line.strip()
+        event = _event_from_stream_line(
+            raw_line
+        )
 
-        if not line.startswith("data:"):
-            continue
-
-        data = line[5:].strip()
-
-        if not data:
-            continue
-
-        try:
-            event = json.loads(data)
-        except json.JSONDecodeError:
+        if event is None:
             continue
 
         structured.extend(
