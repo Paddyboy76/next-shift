@@ -8,6 +8,7 @@ from flask import jsonify
 from flask import request
 
 from identity import verified_principal
+from intake import authorize_and_create
 from security import (
     AuthenticationError,
     AuthorizationError,
@@ -56,6 +57,90 @@ def health():
                 "next-shift-state-authority"
             ),
         }
+    )
+
+
+@app.post("/v1/issues")
+def create_issue():
+    try:
+        principal = _principal()
+    except AuthenticationError:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "authentication_required"
+                    )
+                }
+            ),
+            401,
+        )
+
+    payload: dict[str, Any] | None = (
+        request.get_json(
+            silent=True
+        )
+    )
+
+    if not isinstance(
+        payload,
+        dict,
+    ):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    proposal = payload.get("proposal")
+    source_type = payload.get(
+        "source_type"
+    )
+    source_reference = payload.get(
+        "source_reference"
+    )
+
+    if (
+        not isinstance(proposal, dict)
+        or not isinstance(source_type, str)
+        or not source_type.strip()
+        or not isinstance(
+            source_reference,
+            str,
+        )
+        or not source_reference.strip()
+    ):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    try:
+        issue = authorize_and_create(
+            principal=principal,
+            proposal=proposal,
+            source_type=source_type,
+            source_reference=source_reference,
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return (
+        jsonify(
+            {
+                "status": "created",
+                "issue": issue,
+            }
+        ),
+        201,
     )
 
 
