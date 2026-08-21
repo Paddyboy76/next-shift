@@ -19,6 +19,7 @@ if str(STATE_DIR) not in sys.path:
     sys.path.insert(0, str(STATE_DIR))
 
 from human_reach_contract import build_delivery_request  # noqa: E402
+from human_reach_privacy import pseudonymous_responder  # noqa: E402
 from security import AuthorizationError  # noqa: E402
 
 
@@ -222,6 +223,23 @@ class HumanReachTests(unittest.TestCase):
             runtime._request_id("issue-123"),
         )
 
+    def test_real_chat_identity_is_pseudonymized_before_persistence(self) -> None:
+        first, first_label = pseudonymous_responder(
+            "users/123456789"
+        )
+        again, _ = pseudonymous_responder(
+            "users/123456789"
+        )
+        second, _ = pseudonymous_responder(
+            "users/987654321"
+        )
+
+        self.assertEqual(first, again)
+        self.assertNotEqual(first, second)
+        self.assertTrue(first.startswith("chat-user-"))
+        self.assertEqual(first_label, "Frontline responder")
+        self.assertNotIn("123456789", first)
+
     def test_human_reach_runtime_has_no_direct_firestore_or_closure(self) -> None:
         source = (RUNTIME_DIR / "main.py").read_text(
             encoding="utf-8"
@@ -243,14 +261,21 @@ class HumanReachTests(unittest.TestCase):
         wrapper = (
             STATE_DIR / "human_reach_transition.py"
         ).read_text(encoding="utf-8")
+        freshness = (
+            STATE_DIR / "human_reach_freshness.py"
+        ).read_text(encoding="utf-8")
 
         self.assertIn('"ns-human-reach@"', policy)
         self.assertIn('"human_reach.read_delivery"', policy)
         self.assertIn('"human_reach.delivery_update"', policy)
         self.assertIn("authorize_and_mark_delivered", main)
         self.assertIn("authorize_and_record_response", main)
+        self.assertIn("authorize_and_get_fresh_delivery", main)
+        self.assertIn("pseudonymous_responder", main)
         self.assertIn('new_state != "ACTION_PENDING"', wrapper)
         self.assertIn("ensure_delivery_for_action_pending", wrapper)
+        self.assertIn('"delivery_status": "CANCELLED"', freshness)
+        self.assertIn('current_state == "ACTION_PENDING"', freshness)
 
     def test_deployment_keeps_human_reach_private_and_data_less(self) -> None:
         source = DEPLOY.read_text(encoding="utf-8")
