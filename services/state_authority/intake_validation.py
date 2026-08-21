@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from policy import INTAKE_OWNERS
@@ -16,6 +15,96 @@ ALLOWED_PROPOSAL_FIELDS = frozenset(
         "human_approval_required",
     }
 )
+
+WORKFLOW_FIELDS_BY_OWNER: dict[
+    str,
+    frozenset[str],
+] = {
+    "Facilities": frozenset(
+        {
+            "facility_type",
+            "location",
+        }
+    ),
+    "AssetLogistics": frozenset(
+        {
+            "destination",
+        }
+    ),
+    "LanguageAccess": frozenset(
+        {
+            "language",
+            "service_location",
+        }
+    ),
+    "DischargeDME": frozenset(
+        {
+            "equipment_type",
+            "delivery_destination",
+        }
+    ),
+    "EVSThroughput": frozenset(
+        {
+            "room",
+            "zone",
+        }
+    ),
+    "PatientTransport": frozenset(
+        {
+            "origin",
+            "destination",
+            "transport_type",
+        }
+    ),
+}
+
+
+CANONICAL_VALUES: dict[
+    tuple[str, str],
+    frozenset[str],
+] = {
+    (
+        "Facilities",
+        "facility_type",
+    ): frozenset(
+        {
+            "plumbing",
+            "air_conditioning",
+            "electrical",
+            "room_maintenance",
+        }
+    ),
+    (
+        "DischargeDME",
+        "equipment_type",
+    ): frozenset(
+        {
+            "home_oxygen",
+            "hospital_bed",
+            "walker",
+            "wheelchair",
+        }
+    ),
+    (
+        "EVSThroughput",
+        "zone",
+    ): frozenset(
+        {
+            "North Tower",
+            "South Tower",
+        }
+    ),
+    (
+        "PatientTransport",
+        "transport_type",
+    ): frozenset(
+        {
+            "wheelchair",
+            "walking_assist",
+            "stretcher",
+        }
+    ),
+}
 
 
 def validated_text(
@@ -47,6 +136,71 @@ def validated_text(
         )
 
     return cleaned
+
+
+def _validated_workflow_input(
+    *,
+    owner: str,
+    workflow_input: Any,
+) -> dict[str, str]:
+    if not isinstance(workflow_input, dict):
+        raise AuthorizationError(
+            reason="invalid_intake_value",
+            target_owner=owner,
+            details={
+                "field": "workflow_input",
+            },
+        )
+
+    allowed_fields = (
+        WORKFLOW_FIELDS_BY_OWNER[owner]
+    )
+    extra_fields = (
+        set(workflow_input)
+        - allowed_fields
+    )
+
+    if extra_fields:
+        raise AuthorizationError(
+            reason=(
+                "workflow_input_field_not_authorized"
+            ),
+            target_owner=owner,
+            details={
+                "fields": sorted(extra_fields),
+            },
+        )
+
+    validated: dict[str, str] = {}
+
+    for field, value in workflow_input.items():
+        cleaned = validated_text(
+            value,
+            field=f"workflow_input.{field}",
+            maximum=200,
+        )
+
+        canonical = CANONICAL_VALUES.get(
+            (owner, field)
+        )
+
+        if (
+            canonical is not None
+            and cleaned not in canonical
+        ):
+            raise AuthorizationError(
+                reason="invalid_intake_value",
+                target_owner=owner,
+                details={
+                    "field": (
+                        f"workflow_input.{field}"
+                    ),
+                },
+            )
+
+        validated[field] = cleaned
+
+    return validated
 
 
 def validate_proposal(
@@ -87,43 +241,15 @@ def validate_proposal(
             target_owner=owner,
         )
 
-    workflow_input = proposal.get(
-        "workflow_input",
-        {},
+    workflow_input = (
+        _validated_workflow_input(
+            owner=owner,
+            workflow_input=proposal.get(
+                "workflow_input",
+                {},
+            ),
+        )
     )
-
-    if not isinstance(workflow_input, dict):
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        )
-
-    try:
-        serialized_workflow_input = json.dumps(
-            workflow_input,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-    except (TypeError, ValueError) as exc:
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        ) from exc
-
-    if len(serialized_workflow_input) > 8000:
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        )
 
     human_approval_required = proposal.get(
         "human_approval_required",
@@ -146,7 +272,7 @@ def validate_proposal(
         "title": title,
         "description": description,
         "owner": owner,
-        "workflow_input": dict(workflow_input),
+        "workflow_input": workflow_input,
         "human_approval_required": (
             human_approval_required
         ),
