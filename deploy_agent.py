@@ -1,4 +1,9 @@
+from __future__ import annotations
+
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 
 import vertexai
 
@@ -20,6 +25,7 @@ RESOURCE_NAME = (
 
 ROOT = Path(__file__).resolve().parent
 NEXT_SHIFT_PACKAGE = ROOT / "next_shift"
+PYPROJECT = ROOT / "pyproject.toml"
 
 RUNTIME_REQUIREMENTS = [
     "google-cloud-aiplatform[agent_engines,adk]==1.165.0",
@@ -40,27 +46,74 @@ app = agent_engines.AdkApp(
 )
 
 
+def _build_runtime_wheel(output_dir: Path) -> Path:
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--wheel-dir",
+            str(output_dir),
+            str(ROOT),
+        ],
+        cwd=ROOT,
+        check=True,
+    )
+
+    wheels = sorted(
+        output_dir.glob("next_shift_runtime-*.whl")
+    )
+
+    if len(wheels) != 1:
+        raise RuntimeError(
+            "Expected exactly one Next Shift runtime wheel, "
+            f"found {len(wheels)}"
+        )
+
+    return wheels[0]
+
+
 def main() -> None:
     if not NEXT_SHIFT_PACKAGE.is_dir():
         raise FileNotFoundError(
             f"Missing local agent package: {NEXT_SHIFT_PACKAGE}"
         )
 
+    if not PYPROJECT.is_file():
+        raise FileNotFoundError(
+            f"Missing packaging metadata: {PYPROJECT}"
+        )
+
     print("Updating existing Next Shift Agent Runtime...")
     print(f"RESOURCE_NAME={RESOURCE_NAME}")
-    print(f"EXTRA_PACKAGE={NEXT_SHIFT_PACKAGE}")
 
-    remote_agent = client.agent_engines.update(
-        name=RESOURCE_NAME,
-        agent=app,
-        config={
-            "display_name": "Next Shift",
-            "requirements": RUNTIME_REQUIREMENTS,
-            "extra_packages": [str(NEXT_SHIFT_PACKAGE)],
-            "staging_bucket": STAGING_BUCKET,
-            "identity_type": types.IdentityType.AGENT_IDENTITY,
-        },
-    )
+    with tempfile.TemporaryDirectory(
+        prefix="next-shift-agent-wheel-"
+    ) as temp_dir:
+        wheel_path = _build_runtime_wheel(
+            Path(temp_dir)
+        )
+
+        requirements = [
+            *RUNTIME_REQUIREMENTS,
+            wheel_path.name,
+        ]
+
+        print(f"RUNTIME_WHEEL={wheel_path}")
+
+        remote_agent = client.agent_engines.update(
+            name=RESOURCE_NAME,
+            agent=app,
+            config={
+                "display_name": "Next Shift",
+                "requirements": requirements,
+                "extra_packages": [str(wheel_path)],
+                "staging_bucket": STAGING_BUCKET,
+                "identity_type": types.IdentityType.AGENT_IDENTITY,
+            },
+        )
 
     print("UPDATE_COMPLETE")
     print(remote_agent)

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "next-shift-runtime"
+version = "0.1.0"
+description = "Next Shift Agent Runtime package"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+include = ["next_shift*"]
