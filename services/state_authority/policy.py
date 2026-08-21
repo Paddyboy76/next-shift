@@ -236,6 +236,18 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
             }
         ),
     ),
+    (
+        "ns-human-reach@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="HumanReach",
+        capabilities=frozenset(
+            {
+                "human_reach.read_delivery",
+                "human_reach.delivery_update",
+            }
+        ),
+    ),
 }
 
 
@@ -319,6 +331,16 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
     ),
     "verification.close": CapabilityPolicy(
         owner="IndependentVerifier",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "human_reach.read_delivery": CapabilityPolicy(
+        owner="HumanReach",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "human_reach.delivery_update": CapabilityPolicy(
+        owner="HumanReach",
         allowed_update_fields=frozenset(),
         transitions={},
     ),
