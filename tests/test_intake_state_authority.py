@@ -1,7 +1,9 @@
+import json
 import unittest
 from pathlib import Path
 
-from next_shift.tools import create_handover_issue
+from next_shift.intake_contract import IntakeResult
+from services.operations_ui.runtime import _json_from_text
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,39 +34,99 @@ STATE_REQUIREMENTS = (
 
 
 class IntakeStateAuthorityTests(unittest.TestCase):
-    def test_agent_tool_returns_structured_proposal_without_issue_id(
-        self,
-    ) -> None:
-        result = create_handover_issue(
-            title="Wheelchair needed",
-            description="Standard wheelchair required in Room 512",
-            owner="AssetLogistics",
-            workflow_input={
-                "destination": "Room 512",
-            },
+    def test_typed_contract_accepts_multi_issue_intake(self) -> None:
+        result = IntakeResult.model_validate(
+            {
+                "issues": [
+                    {
+                        "title": "Wheelchair needed",
+                        "description": (
+                            "Standard wheelchair required in Room 512"
+                        ),
+                        "owner": "AssetLogistics",
+                        "workflow_input": {
+                            "asset_type": "standard wheelchair",
+                            "destination": "Room 512",
+                        },
+                        "human_approval_required": False,
+                    },
+                    {
+                        "title": "Spanish interpreter needed",
+                        "description": (
+                            "Spanish interpreter required in Room 512"
+                        ),
+                        "owner": "LanguageAccess",
+                        "workflow_input": {
+                            "language": "Spanish",
+                            "service_location": "Room 512",
+                        },
+                        "human_approval_required": False,
+                    },
+                ],
+                "rejected_clinical_requests": [],
+                "summary": "Two unresolved operational issues identified.",
+            }
         )
 
+        self.assertEqual(len(result.issues), 2)
         self.assertEqual(
-            result["proposal_type"],
-            "handover_issue",
-        )
-        proposal = result["proposal"]
-        self.assertEqual(
-            proposal["owner"],
+            result.issues[0].owner,
             "AssetLogistics",
         )
-        self.assertNotIn("id", proposal)
-        self.assertNotIn("state", proposal)
 
-    def test_agent_tool_rejects_unknown_owner(self) -> None:
-        with self.assertRaises(ValueError):
-            create_handover_issue(
-                title="Bad owner",
-                description="Invalid routing target",
-                owner="GeneralAgent",
-            )
+    def test_runtime_parses_schema_json_from_final_text(self) -> None:
+        payload = {
+            "issues": [
+                {
+                    "title": "Wheelchair needed",
+                    "description": "Wheelchair required",
+                    "owner": "AssetLogistics",
+                    "workflow_input": {
+                        "destination": "Room 512",
+                    },
+                    "human_approval_required": False,
+                }
+            ],
+            "rejected_clinical_requests": [],
+            "summary": "One operational issue identified.",
+        }
 
-    def test_operations_ui_extracts_and_persists_proposals(self) -> None:
+        parsed = _json_from_text(
+            json.dumps(payload)
+        )
+
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(
+            parsed["issues"][0]["owner"],
+            "AssetLogistics",
+        )
+
+    def test_runtime_parses_fenced_schema_json(self) -> None:
+        payload = {
+            "issues": [],
+            "rejected_clinical_requests": [
+                "Medication dosage change"
+            ],
+            "summary": "Clinical request rejected.",
+        }
+
+        parsed = _json_from_text(
+            "```json\n"
+            + json.dumps(payload)
+            + "\n```"
+        )
+
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(
+            parsed["rejected_clinical_requests"],
+            ["Medication dosage change"],
+        )
+
+    def test_operations_ui_requires_structured_output_before_persisting(
+        self,
+    ) -> None:
         runtime_source = OPERATIONS_RUNTIME.read_text(
             encoding="utf-8"
         )
@@ -76,8 +138,12 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         )
 
         self.assertIn(
-            'value.get("proposal_type") == "handover_issue"',
+            '"structured_output": False',
             runtime_source,
+        )
+        self.assertIn(
+            'result.get("structured_output") is not True',
+            main_source,
         )
         self.assertIn(
             "persist_handover_proposals(",
