@@ -4,6 +4,7 @@ from pathlib import Path
 
 from next_shift.intake_contract import IntakeResult
 from services.operations_ui.runtime import _json_from_text
+from services.operations_ui.runtime import _structured_results
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,22 +37,30 @@ STATE_REQUIREMENTS = (
 )
 
 
+def _sample_payload() -> dict[str, object]:
+    return {
+        "issues": [
+            {
+                "title": "Wheelchair needed",
+                "description": "Standard wheelchair required in Room 512",
+                "owner": "AssetLogistics",
+                "workflow_input": {
+                    "destination": "Room 512",
+                },
+                "human_approval_required": False,
+            }
+        ],
+        "rejected_clinical_requests": [],
+        "summary": "One operational issue identified.",
+    }
+
+
 class IntakeStateAuthorityTests(unittest.TestCase):
     def test_typed_contract_accepts_multi_issue_intake(self) -> None:
         result = IntakeResult.model_validate(
             {
                 "issues": [
-                    {
-                        "title": "Wheelchair needed",
-                        "description": (
-                            "Standard wheelchair required in Room 512"
-                        ),
-                        "owner": "AssetLogistics",
-                        "workflow_input": {
-                            "destination": "Room 512",
-                        },
-                        "human_approval_required": False,
-                    },
+                    _sample_payload()["issues"][0],
                     {
                         "title": "Spanish interpreter needed",
                         "description": (
@@ -77,24 +86,8 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         )
 
     def test_runtime_parses_schema_json_from_final_text(self) -> None:
-        payload = {
-            "issues": [
-                {
-                    "title": "Wheelchair needed",
-                    "description": "Wheelchair required",
-                    "owner": "AssetLogistics",
-                    "workflow_input": {
-                        "destination": "Room 512",
-                    },
-                    "human_approval_required": False,
-                }
-            ],
-            "rejected_clinical_requests": [],
-            "summary": "One operational issue identified.",
-        }
-
         parsed = _json_from_text(
-            json.dumps(payload)
+            json.dumps(_sample_payload())
         )
 
         self.assertIsNotNone(parsed)
@@ -124,6 +117,21 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         self.assertEqual(
             parsed["rejected_clinical_requests"],
             ["Medication dosage change"],
+        )
+
+    def test_runtime_parses_serialized_event_output(self) -> None:
+        results = _structured_results(
+            {
+                "output": json.dumps(
+                    _sample_payload()
+                )
+            }
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(
+            results[0]["issues"][0]["owner"],
+            "AssetLogistics",
         )
 
     def test_operations_ui_requires_structured_output_before_persisting(
