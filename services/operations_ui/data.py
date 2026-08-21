@@ -16,6 +16,7 @@ ISSUES = "handover_issues"
 EVIDENCE = "issue_evidence"
 TRANSITIONS = "issue_transition_events"
 SHIFTS = "shift_snapshots"
+HUMAN_REACH = "human_reach_deliveries"
 
 
 def _db() -> firestore.Client:
@@ -152,6 +153,21 @@ def get_issue_bundle(
         )
     ]
 
+    human_reach_snapshot = (
+        db
+        .collection(HUMAN_REACH)
+        .document(issue_id)
+        .get()
+    )
+
+    human_reach = (
+        _serialize(
+            human_reach_snapshot.to_dict()
+        )
+        if human_reach_snapshot.exists
+        else None
+    )
+
     evidence.sort(
         key=_time_key,
         reverse=True,
@@ -166,6 +182,7 @@ def get_issue_bundle(
         "issue": issue,
         "evidence": evidence,
         "transitions": transitions,
+        "human_reach": human_reach,
     }
 
 
