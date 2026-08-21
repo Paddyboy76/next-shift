@@ -58,6 +58,47 @@ WORKFLOW_FIELDS_BY_OWNER: dict[
     ),
 }
 
+REQUIRED_WORKFLOW_FIELDS_BY_OWNER: dict[
+    str,
+    frozenset[str],
+] = {
+    "Facilities": frozenset(
+        {
+            "facility_type",
+            "location",
+        }
+    ),
+    "AssetLogistics": frozenset(
+        {
+            "destination",
+        }
+    ),
+    "LanguageAccess": frozenset(
+        {
+            "language",
+            "service_location",
+        }
+    ),
+    "DischargeDME": frozenset(
+        {
+            "equipment_type",
+            "delivery_destination",
+        }
+    ),
+    "EVSThroughput": frozenset(
+        {
+            "room",
+        }
+    ),
+    "PatientTransport": frozenset(
+        {
+            "origin",
+            "destination",
+            "transport_type",
+        }
+    ),
+}
+
 
 CANONICAL_VALUES: dict[
     tuple[str, str],
@@ -168,6 +209,27 @@ def _validated_workflow_input(
             target_owner=owner,
             details={
                 "fields": sorted(extra_fields),
+            },
+        )
+
+    required_fields = (
+        REQUIRED_WORKFLOW_FIELDS_BY_OWNER[
+            owner
+        ]
+    )
+    missing_fields = (
+        required_fields
+        - set(workflow_input)
+    )
+
+    if missing_fields:
+        raise AuthorizationError(
+            reason=(
+                "workflow_input_field_required"
+            ),
+            target_owner=owner,
+            details={
+                "fields": sorted(missing_fields),
             },
         )
 

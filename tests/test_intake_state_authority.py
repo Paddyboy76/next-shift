@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from next_shift.intake_contract import IntakeResult
+from services.operations_ui.runtime import _event_from_stream_line
 from services.operations_ui.runtime import _json_from_text
 from services.operations_ui.runtime import _structured_results
 
@@ -16,6 +17,9 @@ OPERATIONS_MAIN = (
 )
 OPERATIONS_AUTHORITY = (
     ROOT / "services" / "operations_ui" / "state_authority.py"
+)
+OPERATIONS_APP = (
+    ROOT / "services" / "operations_ui" / "static" / "app.js"
 )
 STATE_MAIN = (
     ROOT / "services" / "state_authority" / "main.py"
@@ -52,6 +56,25 @@ def _sample_payload() -> dict[str, object]:
         ],
         "rejected_clinical_requests": [],
         "summary": "One operational issue identified.",
+    }
+
+
+def _observed_runtime_event() -> dict[str, object]:
+    return {
+        "model_version": "gemini-3.5-flash",
+        "content": {
+            "parts": [
+                {
+                    "text": json.dumps(
+                        _sample_payload(),
+                        separators=(",", ":"),
+                    )
+                }
+            ],
+            "role": "model",
+        },
+        "finish_reason": "STOP",
+        "author": "next_shift",
     }
 
 
@@ -134,6 +157,29 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             "AssetLogistics",
         )
 
+    def test_runtime_accepts_observed_bare_json_stream_line(self) -> None:
+        event = _event_from_stream_line(
+            json.dumps(_observed_runtime_event())
+        )
+
+        self.assertIsNotNone(event)
+        results = _structured_results(event)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(
+            results[0]["issues"][0]["owner"],
+            "AssetLogistics",
+        )
+
+    def test_runtime_still_accepts_sse_data_framing(self) -> None:
+        event = _event_from_stream_line(
+            "data: "
+            + json.dumps(_observed_runtime_event())
+        )
+
+        self.assertIsNotNone(event)
+        results = _structured_results(event)
+        self.assertEqual(len(results), 1)
+
     def test_operations_ui_requires_structured_output_before_persisting(
         self,
     ) -> None:
@@ -144,6 +190,9 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             encoding="utf-8"
         )
         client_source = OPERATIONS_AUTHORITY.read_text(
+            encoding="utf-8"
+        )
+        app_source = OPERATIONS_APP.read_text(
             encoding="utf-8"
         )
 
@@ -167,6 +216,14 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             'f"{authority_url}/v1/issues"',
             client_source,
         )
+        self.assertIn(
+            "const raw = await response.text();",
+            app_source,
+        )
+        self.assertIn(
+            "payload?.message",
+            app_source,
+        )
 
     def test_state_authority_allowlists_model_workflow_fields(self) -> None:
         validation_source = STATE_VALIDATION.read_text(
@@ -178,7 +235,15 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             validation_source,
         )
         self.assertIn(
+            "REQUIRED_WORKFLOW_FIELDS_BY_OWNER",
+            validation_source,
+        )
+        self.assertIn(
             "workflow_input_field_not_authorized",
+            validation_source,
+        )
+        self.assertIn(
+            "workflow_input_field_required",
             validation_source,
         )
         self.assertIn(

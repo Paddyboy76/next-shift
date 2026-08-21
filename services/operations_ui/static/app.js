@@ -48,12 +48,34 @@ function shortTime(value) {
 
 async function json(url, options = {}) {
   const response = await fetch(url, options);
+  const raw = await response.text();
 
-  if (!response.ok) {
-    throw new Error(`${response.status} ${url}`);
+  let payload = null;
+
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch (_error) {
+      payload = null;
+    }
   }
 
-  return response.json();
+  if (!response.ok) {
+    const detail =
+      payload?.message ||
+      payload?.detail ||
+      payload?.error ||
+      raw.trim() ||
+      url;
+
+    throw new Error(`${response.status}: ${detail}`);
+  }
+
+  if (payload === null) {
+    throw new Error(`Invalid JSON response from ${url}`);
+  }
+
+  return payload;
 }
 
 async function loadSummary() {
