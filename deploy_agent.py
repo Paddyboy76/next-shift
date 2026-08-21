@@ -7,8 +7,14 @@ from next_shift.agent import root_agent
 
 
 PROJECT_ID = "next-shift-506004"
+PROJECT_NUMBER = "963749706976"
 LOCATION = "asia-southeast1"
 STAGING_BUCKET = "gs://next-shift-506004-agent-staging"
+REASONING_ENGINE_ID = "8140616966286082048"
+RESOURCE_NAME = (
+    f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/"
+    f"reasoningEngines/{REASONING_ENGINE_ID}"
+)
 
 
 client = vertexai.Client(
@@ -22,9 +28,11 @@ app = agent_engines.AdkApp(
 
 
 def main() -> None:
-    print("Deploying Next Shift to Agent Runtime...")
+    print("Updating existing Next Shift Agent Runtime...")
+    print(f"RESOURCE_NAME={RESOURCE_NAME}")
 
-    remote_agent = client.agent_engines.create(
+    remote_agent = client.agent_engines.update(
+        name=RESOURCE_NAME,
         agent=app,
         config={
             "display_name": "Next Shift",
@@ -38,7 +46,7 @@ def main() -> None:
         },
     )
 
-    print("DEPLOYMENT_COMPLETE")
+    print("UPDATE_COMPLETE")
     print(remote_agent)
 
 
