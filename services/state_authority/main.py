@@ -7,6 +7,11 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 
+from evidence import (
+    authorize_and_close_verified_issue,
+    authorize_and_get_verification_context,
+    authorize_and_record_evidence,
+)
 from identity import verified_principal
 from intake import authorize_and_create
 from security import (
@@ -48,6 +53,22 @@ def _principal() -> str:
     return principal
 
 
+def _authenticated_principal():
+    try:
+        return _principal(), None
+    except AuthenticationError:
+        return None, (
+            jsonify(
+                {
+                    "error": (
+                        "authentication_required"
+                    )
+                }
+            ),
+            401,
+        )
+
+
 @app.get("/health")
 def health():
     return jsonify(
@@ -62,19 +83,12 @@ def health():
 
 @app.post("/v1/issues")
 def create_issue():
-    try:
-        principal = _principal()
-    except AuthenticationError:
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "authentication_required"
-                    )
-                }
-            ),
-            401,
-        )
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
 
     payload: dict[str, Any] | None = (
         request.get_json(
@@ -145,24 +159,166 @@ def create_issue():
 
 
 @app.post(
+    "/v1/issues/<issue_id>/evidence"
+)
+def record_evidence(
+    issue_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    try:
+        result = authorize_and_record_evidence(
+            principal=principal,
+            issue_id=issue_id,
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return (
+        jsonify(
+            {
+                "status": "evidence_recorded",
+                "issue_id": issue_id,
+                "state": "VERIFYING",
+                "owner": result["owner"],
+                "evidence": result["evidence"],
+                "transition_event_id": (
+                    result["transition_event_id"]
+                ),
+            }
+        ),
+        201,
+    )
+
+
+@app.get(
+    "/v1/issues/<issue_id>/verification-context"
+)
+def verification_context(
+    issue_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    try:
+        result = (
+            authorize_and_get_verification_context(
+                principal=principal,
+                issue_id=issue_id,
+            )
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "verification_context",
+            **result,
+        }
+    )
+
+
+@app.post(
+    "/v1/issues/<issue_id>/verify"
+)
+def verify_issue(
+    issue_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    payload = request.get_json(
+        silent=True
+    )
+
+    if not isinstance(payload, dict):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    evidence_id = payload.get(
+        "evidence_id"
+    )
+
+    if (
+        not isinstance(evidence_id, str)
+        or not evidence_id.strip()
+    ):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    try:
+        result = (
+            authorize_and_close_verified_issue(
+                principal=principal,
+                issue_id=issue_id,
+                evidence_id=evidence_id,
+            )
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "verified_closed",
+            "issue_id": issue_id,
+            "state": "CLOSED",
+            "owner": result["owner"],
+            "evidence": result["evidence"],
+            "transition_event_id": (
+                result["transition_event_id"]
+            ),
+        }
+    )
+
+
+@app.post(
     "/v1/issues/<issue_id>/mutate"
 )
 def mutate_issue(
     issue_id: str,
 ):
-    try:
-        principal = _principal()
-    except AuthenticationError:
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "authentication_required"
-                    )
-                }
-            ),
-            401,
-        )
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
 
     payload: dict[str, Any] | None = (
         request.get_json(
@@ -252,19 +408,12 @@ def mutate_issue(
 def transition_issue(
     issue_id: str,
 ):
-    try:
-        principal = _principal()
-    except AuthenticationError:
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "authentication_required"
-                    )
-                }
-            ),
-            401,
-        )
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
 
     payload: dict[str, Any] | None = (
         request.get_json(
