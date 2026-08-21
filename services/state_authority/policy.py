@@ -8,6 +8,17 @@ SERVICE_ACCOUNT_DOMAIN = (
     f"{PROJECT_ID}.iam.gserviceaccount.com"
 )
 
+INTAKE_OWNERS = frozenset(
+    {
+        "Facilities",
+        "AssetLogistics",
+        "LanguageAccess",
+        "DischargeDME",
+        "EVSThroughput",
+        "PatientTransport",
+    }
+)
+
 
 @dataclass(frozen=True)
 class PrincipalPolicy:
@@ -141,6 +152,15 @@ TRANSPORT_ASSIGNMENT_FIELDS = frozenset(
 
 
 PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
+    (
+        "ns-operations-ui@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="Intake",
+        capabilities=frozenset(
+            {"intake.create"}
+        ),
+    ),
     (
         "ns-worker-facilities@"
         + SERVICE_ACCOUNT_DOMAIN
