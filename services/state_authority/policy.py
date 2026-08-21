@@ -216,12 +216,24 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
         ),
     ),
     (
+        "ns-trusted-evidence@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="TrustedEvidence",
+        capabilities=frozenset(
+            {"evidence.record"}
+        ),
+    ),
+    (
         "ns-verifier@"
         + SERVICE_ACCOUNT_DOMAIN
     ): PrincipalPolicy(
         owner="IndependentVerifier",
         capabilities=frozenset(
-            {"verification.close"}
+            {
+                "verification.read",
+                "verification.close",
+            }
         ),
     ),
 }
@@ -294,6 +306,16 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
                 {"transport_status"}
             ),
         )
+    ),
+    "evidence.record": CapabilityPolicy(
+        owner="TrustedEvidence",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "verification.read": CapabilityPolicy(
+        owner="IndependentVerifier",
+        allowed_update_fields=frozenset(),
+        transitions={},
     ),
     "verification.close": CapabilityPolicy(
         owner="IndependentVerifier",

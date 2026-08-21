@@ -7,6 +7,10 @@ from flask import jsonify
 from flask import render_template
 from flask import request
 
+from completion import (
+    record_trusted_completion,
+    run_independent_verifier,
+)
 from data import (
     dashboard_summary,
     get_issue_bundle,
@@ -71,6 +75,50 @@ def issue_detail(
                 {"error": "not_found"}
             ),
             404,
+        )
+
+    return jsonify(result)
+
+
+@app.post("/api/issues/<issue_id>/complete")
+def complete_issue(
+    issue_id: str,
+):
+    try:
+        result = record_trusted_completion(
+            issue_id
+        )
+    except RuntimeError as exc:
+        return (
+            jsonify(
+                {
+                    "error": "trusted_evidence_failed",
+                    "message": str(exc),
+                }
+            ),
+            502,
+        )
+
+    return jsonify(result)
+
+
+@app.post("/api/issues/<issue_id>/verify")
+def verify_issue(
+    issue_id: str,
+):
+    try:
+        result = run_independent_verifier(
+            issue_id
+        )
+    except RuntimeError as exc:
+        return (
+            jsonify(
+                {
+                    "error": "verification_failed",
+                    "message": str(exc),
+                }
+            ),
+            502,
         )
 
     return jsonify(result)
