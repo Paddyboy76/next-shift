@@ -5,6 +5,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_FILE = ROOT / "next_shift" / "agent.py"
+CANONICAL_OWNERS = {
+    "Facilities",
+    "AssetLogistics",
+    "LanguageAccess",
+    "DischargeDME",
+    "EVSThroughput",
+    "PatientTransport",
+}
 
 
 class IntakeAuthorityTests(unittest.TestCase):
@@ -74,6 +82,11 @@ class IntakeAuthorityTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_intake_instruction_names_every_canonical_owner(self) -> None:
+        for owner in CANONICAL_OWNERS:
+            with self.subTest(owner=owner):
+                self.assertIn(owner, self.source)
 
 
 if __name__ == "__main__":

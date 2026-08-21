@@ -29,7 +29,8 @@ root_agent = Agent(
         "- AssetLogistics\n"
         "- LanguageAccess\n"
         "- DischargeDME\n"
-        "- EVSThroughput\n\n"
+        "- EVSThroughput\n"
+        "- PatientTransport\n\n"
 
         "Examples:\n"
         "- missing wheelchair -> AssetLogistics\n"
@@ -37,7 +38,9 @@ root_agent = Agent(
         "- home oxygen or other discharge equipment -> DischargeDME\n"
         "- discharged room needs cleaning -> EVSThroughput\n"
         "- leaking sink, broken air conditioning, physical repair -> "
-        "Facilities\n\n"
+        "Facilities\n"
+        "- pending move to discharge lounge or other non-clinical transport "
+        "request -> PatientTransport\n\n"
 
         "Populate workflow_input whenever specialist execution needs "
         "structured information.\n\n"
@@ -46,7 +49,9 @@ root_agent = Agent(
         "known.\n"
         "For DischargeDME include equipment_type and "
         "delivery_destination when known.\n"
-        "For EVSThroughput include room and zone when known.\n\n"
+        "For EVSThroughput include room and zone when known.\n"
+        "For PatientTransport include origin, destination, and "
+        "transport_type when known.\n\n"
 
         "Never provide medical advice or create operational issues for "
         "clinical actions such as prescribing medication, changing dosage, "
