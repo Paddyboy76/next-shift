@@ -1,35 +1,23 @@
 from __future__ import annotations
 
-import json
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from google.cloud import firestore
-from google.cloud import pubsub_v1
 
 from audit import emit_security_event
-from policy import INTAKE_OWNERS
+from intake_dispatch import publish_received
+from intake_validation import (
+    validate_proposal,
+    validate_source,
+)
 from policy import PRINCIPAL_POLICIES
 from security import AuthorizationError
 
 
 PROJECT_ID = "next-shift-506004"
 ISSUE_COLLECTION = "handover_issues"
-HANDOVER_TOPIC = "next-shift-handover-received"
-HANDOVER_EVENT_TYPE = "handover.issue.received"
-HANDOVER_EVENT_VERSION = "1.0"
 INTAKE_CAPABILITY = "intake.create"
-
-ALLOWED_PROPOSAL_FIELDS = frozenset(
-    {
-        "title",
-        "description",
-        "owner",
-        "workflow_input",
-        "human_approval_required",
-    }
-)
 
 
 def _now_iso() -> str:
@@ -116,189 +104,6 @@ def _authorize_intake(
         raise error
 
 
-def _validated_text(
-    value: Any,
-    *,
-    field: str,
-    maximum: int,
-) -> str:
-    if not isinstance(value, str):
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            details={"field": field},
-        )
-
-    cleaned = value.strip()
-
-    if (
-        not cleaned
-        or len(cleaned) > maximum
-        or any(
-            ord(char) < 32
-            and char not in "\n\r\t"
-            for char in cleaned
-        )
-    ):
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            details={"field": field},
-        )
-
-    return cleaned
-
-
-def _validate_proposal(
-    proposal: dict[str, Any],
-) -> dict[str, Any]:
-    extra_fields = (
-        set(proposal)
-        - ALLOWED_PROPOSAL_FIELDS
-    )
-
-    if extra_fields:
-        raise AuthorizationError(
-            reason="intake_field_not_authorized",
-            details={
-                "fields": sorted(extra_fields),
-            },
-        )
-
-    title = _validated_text(
-        proposal.get("title"),
-        field="title",
-        maximum=200,
-    )
-    description = _validated_text(
-        proposal.get("description"),
-        field="description",
-        maximum=4000,
-    )
-    owner = _validated_text(
-        proposal.get("owner"),
-        field="owner",
-        maximum=64,
-    )
-
-    if owner not in INTAKE_OWNERS:
-        raise AuthorizationError(
-            reason="invalid_intake_owner",
-            target_owner=owner,
-        )
-
-    workflow_input = proposal.get(
-        "workflow_input",
-        {},
-    )
-
-    if not isinstance(workflow_input, dict):
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        )
-
-    try:
-        serialized_workflow_input = json.dumps(
-            workflow_input,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-    except (TypeError, ValueError) as exc:
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        ) from exc
-
-    if len(serialized_workflow_input) > 8000:
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
-        )
-
-    human_approval_required = proposal.get(
-        "human_approval_required",
-        False,
-    )
-
-    if not isinstance(
-        human_approval_required,
-        bool,
-    ):
-        raise AuthorizationError(
-            reason="invalid_intake_value",
-            target_owner=owner,
-            details={
-                "field": "human_approval_required",
-            },
-        )
-
-    return {
-        "title": title,
-        "description": description,
-        "owner": owner,
-        "workflow_input": dict(workflow_input),
-        "human_approval_required": (
-            human_approval_required
-        ),
-    }
-
-
-def _publish_received(
-    issue: dict[str, Any],
-) -> dict[str, str]:
-    publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(
-        PROJECT_ID,
-        HANDOVER_TOPIC,
-    )
-
-    event_id = str(uuid.uuid4())
-    payload = {
-        "event_id": event_id,
-        "event_type": HANDOVER_EVENT_TYPE,
-        "event_version": HANDOVER_EVENT_VERSION,
-        "occurred_at": _now_iso(),
-        "issue_id": issue["id"],
-        "owner": issue["owner"],
-        "state": issue["state"],
-        "source_type": issue["source_type"],
-        "source_reference": issue[
-            "source_reference"
-        ],
-        "workflow_input": dict(
-            issue.get(
-                "workflow_input",
-                {},
-            )
-        ),
-    }
-
-    future = publisher.publish(
-        topic_path,
-        json.dumps(
-            payload,
-            separators=(",", ":"),
-        ).encode("utf-8"),
-        event_type=HANDOVER_EVENT_TYPE,
-        event_version=HANDOVER_EVENT_VERSION,
-        issue_id=issue["id"],
-        owner=issue["owner"],
-    )
-
-    return {
-        "event_id": event_id,
-        "message_id": future.result(),
-    }
-
-
 def authorize_and_create(
     *,
     principal: str,
@@ -318,20 +123,15 @@ def authorize_and_create(
         raise error
 
     try:
-        validated = _validate_proposal(
+        validated = validate_proposal(
             proposal
         )
-        validated_source_type = _validated_text(
-            source_type,
-            field="source_type",
-            maximum=64,
-        )
-        validated_source_reference = (
-            _validated_text(
-                source_reference,
-                field="source_reference",
-                maximum=200,
-            )
+        (
+            validated_source_type,
+            validated_source_reference,
+        ) = validate_source(
+            source_type=source_type,
+            source_reference=source_reference,
         )
     except AuthorizationError as error:
         _emit_denial(
@@ -354,9 +154,8 @@ def authorize_and_create(
     )
 
     now = _now_iso()
-    db = _db()
     doc_ref = (
-        db
+        _db()
         .collection(ISSUE_COLLECTION)
         .document()
     )
@@ -399,7 +198,7 @@ def authorize_and_create(
     doc_ref.set(issue)
 
     try:
-        event = _publish_received(issue)
+        event = publish_received(issue)
     except Exception as exc:
         doc_ref.update(
             {
