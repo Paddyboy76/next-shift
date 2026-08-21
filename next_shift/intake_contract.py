@@ -118,34 +118,27 @@ class IntakeResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     facilities: list[FacilitiesIssue] = Field(
-        default_factory=list,
-        description="Every unresolved Facilities issue.",
+        description="Every unresolved Facilities issue; use [] when none."
     )
     asset_logistics: list[AssetLogisticsIssue] = Field(
-        default_factory=list,
-        description="Every unresolved AssetLogistics issue.",
+        description="Every unresolved AssetLogistics issue; use [] when none."
     )
     language_access: list[LanguageAccessIssue] = Field(
-        default_factory=list,
-        description="Every unresolved LanguageAccess issue.",
+        description="Every unresolved LanguageAccess issue; use [] when none."
     )
     discharge_dme: list[DischargeDMEIssue] = Field(
-        default_factory=list,
-        description="Every unresolved DischargeDME issue.",
+        description="Every unresolved DischargeDME issue; use [] when none."
     )
     evs_throughput: list[EVSThroughputIssue] = Field(
-        default_factory=list,
-        description="Every unresolved EVSThroughput issue.",
+        description="Every unresolved EVSThroughput issue; use [] when none."
     )
     patient_transport: list[PatientTransportIssue] = Field(
-        default_factory=list,
-        description="Every unresolved PatientTransport issue.",
+        description="Every unresolved PatientTransport issue; use [] when none."
     )
     rejected_clinical_requests: list[str] = Field(
-        default_factory=list,
         description=(
-            "Clinical or otherwise prohibited requests that were deliberately "
-            "not converted into operational work."
+            "Clinical or otherwise prohibited requests deliberately not "
+            "converted into operational work; use [] when none."
         ),
     )
     summary: str = Field(
