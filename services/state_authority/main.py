@@ -12,16 +12,21 @@ from evidence import (
     authorize_and_get_verification_context,
     authorize_and_record_evidence,
 )
+from human_reach import (
+    authorize_and_get_delivery,
+    authorize_and_mark_delivered,
+    authorize_and_record_response,
+)
+from human_reach_transition import (
+    authorize_and_transition,
+)
 from identity import verified_principal
 from intake import authorize_and_create
 from security import (
     AuthenticationError,
     AuthorizationError,
 )
-from state import (
-    authorize_and_transition,
-    authorize_and_update,
-)
+from state import authorize_and_update
 
 
 app = Flask(__name__)
@@ -155,6 +160,148 @@ def create_issue():
             }
         ),
         201,
+    )
+
+
+@app.get(
+    "/v1/human-reach/deliveries/<delivery_id>"
+)
+def human_reach_delivery(
+    delivery_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    try:
+        delivery = authorize_and_get_delivery(
+            principal=principal,
+            delivery_id=delivery_id,
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "delivery",
+            "delivery": delivery,
+        }
+    )
+
+
+@app.post(
+    "/v1/human-reach/deliveries/<delivery_id>/delivered"
+)
+def human_reach_delivered(
+    delivery_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    payload = request.get_json(
+        silent=True
+    )
+
+    if not isinstance(payload, dict):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    try:
+        delivery = authorize_and_mark_delivered(
+            principal=principal,
+            delivery_id=delivery_id,
+            destination_space=payload.get(
+                "destination_space"
+            ),
+            destination_display_name=payload.get(
+                "destination_display_name"
+            ),
+            message_name=payload.get(
+                "message_name"
+            ),
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "delivered",
+            "delivery": delivery,
+        }
+    )
+
+
+@app.post(
+    "/v1/human-reach/deliveries/<delivery_id>/respond"
+)
+def human_reach_respond(
+    delivery_id: str,
+):
+    principal, auth_error = (
+        _authenticated_principal()
+    )
+
+    if auth_error is not None:
+        return auth_error
+
+    payload = request.get_json(
+        silent=True
+    )
+
+    if not isinstance(payload, dict):
+        return (
+            jsonify(
+                {"error": "invalid_request"}
+            ),
+            400,
+        )
+
+    try:
+        delivery = authorize_and_record_response(
+            principal=principal,
+            delivery_id=delivery_id,
+            action=payload.get("action"),
+            actor_user=payload.get("actor_user"),
+            actor_display_name=payload.get(
+                "actor_display_name"
+            ),
+            source_space=payload.get("source_space"),
+            source_message=payload.get("source_message"),
+        )
+    except AuthorizationError:
+        return (
+            jsonify(
+                {"error": "not_authorized"}
+            ),
+            403,
+        )
+
+    return jsonify(
+        {
+            "status": "response_recorded",
+            "delivery": delivery,
+        }
     )
 
 
@@ -510,20 +657,25 @@ def transition_issue(
             403,
         )
 
-    return jsonify(
-        {
-            "status": "transitioned",
-            "issue_id": issue_id,
-            "from_state": (
-                result["from_state"]
-            ),
-            "to_state": (
-                result["to_state"]
-            ),
-            "transition_event_id": (
-                result[
-                    "transition_event_id"
-                ]
-            ),
-        }
-    )
+    response = {
+        "status": "transitioned",
+        "issue_id": issue_id,
+        "from_state": (
+            result["from_state"]
+        ),
+        "to_state": (
+            result["to_state"]
+        ),
+        "transition_event_id": (
+            result[
+                "transition_event_id"
+            ]
+        ),
+    }
+
+    if "human_reach" in result:
+        response["human_reach"] = result[
+            "human_reach"
+        ]
+
+    return jsonify(response)
