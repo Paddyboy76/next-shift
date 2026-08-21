@@ -1,7 +1,10 @@
+import json
 import unittest
 from pathlib import Path
 
-from next_shift.tools import create_handover_issue
+from next_shift.intake_contract import IntakeResult
+from services.operations_ui.runtime import _json_from_text
+from services.operations_ui.runtime import _structured_results
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +23,9 @@ STATE_MAIN = (
 STATE_INTAKE = (
     ROOT / "services" / "state_authority" / "intake.py"
 )
+STATE_VALIDATION = (
+    ROOT / "services" / "state_authority" / "intake_validation.py"
+)
 STATE_DISPATCH = (
     ROOT / "services" / "state_authority" / "intake_dispatch.py"
 )
@@ -31,40 +37,106 @@ STATE_REQUIREMENTS = (
 )
 
 
+def _sample_payload() -> dict[str, object]:
+    return {
+        "issues": [
+            {
+                "title": "Wheelchair needed",
+                "description": "Standard wheelchair required in Room 512",
+                "owner": "AssetLogistics",
+                "workflow_input": {
+                    "destination": "Room 512",
+                },
+                "human_approval_required": False,
+            }
+        ],
+        "rejected_clinical_requests": [],
+        "summary": "One operational issue identified.",
+    }
+
+
 class IntakeStateAuthorityTests(unittest.TestCase):
-    def test_agent_tool_returns_structured_proposal_without_issue_id(
-        self,
-    ) -> None:
-        result = create_handover_issue(
-            title="Wheelchair needed",
-            description="Standard wheelchair required in Room 512",
-            owner="AssetLogistics",
-            workflow_input={
-                "destination": "Room 512",
-            },
+    def test_typed_contract_accepts_multi_issue_intake(self) -> None:
+        result = IntakeResult.model_validate(
+            {
+                "issues": [
+                    _sample_payload()["issues"][0],
+                    {
+                        "title": "Spanish interpreter needed",
+                        "description": (
+                            "Spanish interpreter required in Room 512"
+                        ),
+                        "owner": "LanguageAccess",
+                        "workflow_input": {
+                            "language": "Spanish",
+                            "service_location": "Room 512",
+                        },
+                        "human_approval_required": False,
+                    },
+                ],
+                "rejected_clinical_requests": [],
+                "summary": "Two unresolved operational issues identified.",
+            }
         )
 
+        self.assertEqual(len(result.issues), 2)
         self.assertEqual(
-            result["proposal_type"],
-            "handover_issue",
-        )
-        proposal = result["proposal"]
-        self.assertEqual(
-            proposal["owner"],
+            result.issues[0].owner,
             "AssetLogistics",
         )
-        self.assertNotIn("id", proposal)
-        self.assertNotIn("state", proposal)
 
-    def test_agent_tool_rejects_unknown_owner(self) -> None:
-        with self.assertRaises(ValueError):
-            create_handover_issue(
-                title="Bad owner",
-                description="Invalid routing target",
-                owner="GeneralAgent",
-            )
+    def test_runtime_parses_schema_json_from_final_text(self) -> None:
+        parsed = _json_from_text(
+            json.dumps(_sample_payload())
+        )
 
-    def test_operations_ui_extracts_and_persists_proposals(self) -> None:
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(
+            parsed["issues"][0]["owner"],
+            "AssetLogistics",
+        )
+
+    def test_runtime_parses_fenced_schema_json(self) -> None:
+        payload = {
+            "issues": [],
+            "rejected_clinical_requests": [
+                "Medication dosage change"
+            ],
+            "summary": "Clinical request rejected.",
+        }
+
+        parsed = _json_from_text(
+            "```json\n"
+            + json.dumps(payload)
+            + "\n```"
+        )
+
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(
+            parsed["rejected_clinical_requests"],
+            ["Medication dosage change"],
+        )
+
+    def test_runtime_parses_serialized_event_output(self) -> None:
+        results = _structured_results(
+            {
+                "output": json.dumps(
+                    _sample_payload()
+                )
+            }
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(
+            results[0]["issues"][0]["owner"],
+            "AssetLogistics",
+        )
+
+    def test_operations_ui_requires_structured_output_before_persisting(
+        self,
+    ) -> None:
         runtime_source = OPERATIONS_RUNTIME.read_text(
             encoding="utf-8"
         )
@@ -76,8 +148,12 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         )
 
         self.assertIn(
-            'value.get("proposal_type") == "handover_issue"',
+            '"structured_output": False',
             runtime_source,
+        )
+        self.assertIn(
+            'result.get("structured_output") is not True',
+            main_source,
         )
         self.assertIn(
             "persist_handover_proposals(",
@@ -90,6 +166,32 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         self.assertIn(
             'f"{authority_url}/v1/issues"',
             client_source,
+        )
+
+    def test_state_authority_allowlists_model_workflow_fields(self) -> None:
+        validation_source = STATE_VALIDATION.read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "WORKFLOW_FIELDS_BY_OWNER",
+            validation_source,
+        )
+        self.assertIn(
+            "workflow_input_field_not_authorized",
+            validation_source,
+        )
+        self.assertIn(
+            '"home_oxygen"',
+            validation_source,
+        )
+        self.assertIn(
+            '"air_conditioning"',
+            validation_source,
+        )
+        self.assertIn(
+            '"wheelchair"',
+            validation_source,
         )
 
     def test_state_authority_owns_creation_and_dispatch(self) -> None:
