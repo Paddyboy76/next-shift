@@ -13,9 +13,14 @@ from evidence import (
     authorize_and_record_evidence,
 )
 from human_reach import (
-    authorize_and_get_delivery,
     authorize_and_mark_delivered,
     authorize_and_record_response,
+)
+from human_reach_freshness import (
+    authorize_and_get_fresh_delivery,
+)
+from human_reach_privacy import (
+    pseudonymous_responder,
 )
 from human_reach_transition import (
     authorize_and_transition,
@@ -177,7 +182,7 @@ def human_reach_delivery(
         return auth_error
 
     try:
-        delivery = authorize_and_get_delivery(
+        delivery = authorize_and_get_fresh_delivery(
             principal=principal,
             delivery_id=delivery_id,
         )
@@ -278,14 +283,18 @@ def human_reach_respond(
         )
 
     try:
+        (
+            actor_user,
+            actor_display_name,
+        ) = pseudonymous_responder(
+            payload.get("actor_user")
+        )
         delivery = authorize_and_record_response(
             principal=principal,
             delivery_id=delivery_id,
             action=payload.get("action"),
-            actor_user=payload.get("actor_user"),
-            actor_display_name=payload.get(
-                "actor_display_name"
-            ),
+            actor_user=actor_user,
+            actor_display_name=actor_display_name,
             source_space=payload.get("source_space"),
             source_message=payload.get("source_message"),
         )
