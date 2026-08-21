@@ -49,35 +49,6 @@ def _access_token() -> str:
     return credentials.token
 
 
-def _extract_text(
-    value: Any,
-) -> list[str]:
-    results: list[str] = []
-
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if (
-                key == "text"
-                and isinstance(item, str)
-                and item.strip()
-            ):
-                results.append(
-                    item.strip()
-                )
-            else:
-                results.extend(
-                    _extract_text(item)
-                )
-
-    elif isinstance(value, list):
-        for item in value:
-            results.extend(
-                _extract_text(item)
-            )
-
-    return results
-
-
 def _normalize_intake_result(
     value: Any,
 ) -> dict[str, Any] | None:
@@ -120,33 +91,6 @@ def _normalize_intake_result(
     }
 
 
-def _structured_results(
-    value: Any,
-) -> list[dict[str, Any]]:
-    results: list[dict[str, Any]] = []
-
-    normalized = _normalize_intake_result(
-        value
-    )
-
-    if normalized is not None:
-        results.append(normalized)
-
-    if isinstance(value, dict):
-        for item in value.values():
-            results.extend(
-                _structured_results(item)
-            )
-
-    elif isinstance(value, list):
-        for item in value:
-            results.extend(
-                _structured_results(item)
-            )
-
-    return results
-
-
 def _json_from_text(
     text: str,
 ) -> dict[str, Any] | None:
@@ -169,6 +113,39 @@ def _json_from_text(
         return None
 
     return _normalize_intake_result(parsed)
+
+
+def _structured_results(
+    value: Any,
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    normalized = _normalize_intake_result(
+        value
+    )
+
+    if normalized is not None:
+        results.append(normalized)
+
+    if isinstance(value, str):
+        parsed = _json_from_text(value)
+
+        if parsed is not None:
+            results.append(parsed)
+
+    elif isinstance(value, dict):
+        for item in value.values():
+            results.extend(
+                _structured_results(item)
+            )
+
+    elif isinstance(value, list):
+        for item in value:
+            results.extend(
+                _structured_results(item)
+            )
+
+    return results
 
 
 def _dedupe_proposals(
@@ -240,7 +217,6 @@ def submit_handover(
 
     response.raise_for_status()
 
-    text_parts: list[str] = []
     structured: list[dict[str, Any]] = []
 
     for raw_line in response.iter_lines(
@@ -264,17 +240,9 @@ def submit_handover(
         except json.JSONDecodeError:
             continue
 
-        event_text = _extract_text(event)
-        text_parts.extend(event_text)
         structured.extend(
             _structured_results(event)
         )
-
-        for text in event_text:
-            parsed = _json_from_text(text)
-
-            if parsed is not None:
-                structured.append(parsed)
 
     if not structured:
         return {
