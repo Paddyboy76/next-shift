@@ -16,98 +16,34 @@ ALLOWED_PROPOSAL_FIELDS = frozenset(
     }
 )
 
-WORKFLOW_FIELDS_BY_OWNER: dict[
-    str,
-    frozenset[str],
-] = {
-    "Facilities": frozenset(
-        {
-            "facility_type",
-            "location",
-        }
-    ),
-    "AssetLogistics": frozenset(
-        {
-            "destination",
-        }
-    ),
-    "LanguageAccess": frozenset(
-        {
-            "language",
-            "service_location",
-        }
-    ),
+WORKFLOW_FIELDS_BY_OWNER: dict[str, frozenset[str]] = {
+    "Facilities": frozenset({"facility_type", "location"}),
+    "AssetLogistics": frozenset({"destination"}),
+    "LanguageAccess": frozenset({"language", "service_location"}),
     "DischargeDME": frozenset(
-        {
-            "equipment_type",
-            "delivery_destination",
-        }
+        {"equipment_type", "delivery_destination"}
     ),
-    "EVSThroughput": frozenset(
-        {
-            "room",
-            "zone",
-        }
-    ),
+    "EVSThroughput": frozenset({"room", "zone"}),
     "PatientTransport": frozenset(
-        {
-            "origin",
-            "destination",
-            "transport_type",
-        }
+        {"origin", "destination", "transport_type"}
     ),
 }
 
-REQUIRED_WORKFLOW_FIELDS_BY_OWNER: dict[
-    str,
-    frozenset[str],
-] = {
-    "Facilities": frozenset(
-        {
-            "facility_type",
-            "location",
-        }
-    ),
-    "AssetLogistics": frozenset(
-        {
-            "destination",
-        }
-    ),
-    "LanguageAccess": frozenset(
-        {
-            "language",
-            "service_location",
-        }
-    ),
+REQUIRED_WORKFLOW_FIELDS_BY_OWNER: dict[str, frozenset[str]] = {
+    "Facilities": frozenset({"facility_type", "location"}),
+    "AssetLogistics": frozenset({"destination"}),
+    "LanguageAccess": frozenset({"language", "service_location"}),
     "DischargeDME": frozenset(
-        {
-            "equipment_type",
-            "delivery_destination",
-        }
+        {"equipment_type", "delivery_destination"}
     ),
-    "EVSThroughput": frozenset(
-        {
-            "room",
-        }
-    ),
+    "EVSThroughput": frozenset({"room"}),
     "PatientTransport": frozenset(
-        {
-            "origin",
-            "destination",
-            "transport_type",
-        }
+        {"origin", "destination", "transport_type"}
     ),
 }
 
-
-CANONICAL_VALUES: dict[
-    tuple[str, str],
-    frozenset[str],
-] = {
-    (
-        "Facilities",
-        "facility_type",
-    ): frozenset(
+CANONICAL_VALUES: dict[tuple[str, str], frozenset[str]] = {
+    ("Facilities", "facility_type"): frozenset(
         {
             "plumbing",
             "air_conditioning",
@@ -115,10 +51,7 @@ CANONICAL_VALUES: dict[
             "room_maintenance",
         }
     ),
-    (
-        "DischargeDME",
-        "equipment_type",
-    ): frozenset(
+    ("DischargeDME", "equipment_type"): frozenset(
         {
             "home_oxygen",
             "hospital_bed",
@@ -126,24 +59,11 @@ CANONICAL_VALUES: dict[
             "wheelchair",
         }
     ),
-    (
-        "EVSThroughput",
-        "zone",
-    ): frozenset(
-        {
-            "North Tower",
-            "South Tower",
-        }
+    ("EVSThroughput", "zone"): frozenset(
+        {"North Tower", "South Tower"}
     ),
-    (
-        "PatientTransport",
-        "transport_type",
-    ): frozenset(
-        {
-            "wheelchair",
-            "walking_assist",
-            "stretcher",
-        }
+    ("PatientTransport", "transport_type"): frozenset(
+        {"wheelchair", "walking_assist", "stretcher"}
     ),
 }
 
@@ -188,75 +108,53 @@ def _validated_workflow_input(
         raise AuthorizationError(
             reason="invalid_intake_value",
             target_owner=owner,
-            details={
-                "field": "workflow_input",
-            },
+            details={"field": "workflow_input"},
         )
 
-    allowed_fields = (
-        WORKFLOW_FIELDS_BY_OWNER[owner]
-    )
-    extra_fields = (
-        set(workflow_input)
-        - allowed_fields
-    )
+    allowed_fields = WORKFLOW_FIELDS_BY_OWNER[owner]
+    extra_fields = set(workflow_input) - allowed_fields
 
     if extra_fields:
         raise AuthorizationError(
-            reason=(
-                "workflow_input_field_not_authorized"
-            ),
+            reason="workflow_input_field_not_authorized",
             target_owner=owner,
-            details={
-                "fields": sorted(extra_fields),
-            },
+            details={"fields": sorted(extra_fields)},
         )
 
-    required_fields = (
-        REQUIRED_WORKFLOW_FIELDS_BY_OWNER[
-            owner
-        ]
-    )
-    missing_fields = (
-        required_fields
-        - set(workflow_input)
-    )
+    required_fields = REQUIRED_WORKFLOW_FIELDS_BY_OWNER[owner]
+    missing_fields = {
+        field
+        for field in required_fields
+        if field not in workflow_input
+        or workflow_input.get(field) is None
+    }
 
     if missing_fields:
         raise AuthorizationError(
-            reason=(
-                "workflow_input_field_required"
-            ),
+            reason="workflow_input_field_required",
             target_owner=owner,
-            details={
-                "fields": sorted(missing_fields),
-            },
+            details={"fields": sorted(missing_fields)},
         )
 
     validated: dict[str, str] = {}
 
     for field, value in workflow_input.items():
+        if value is None and field not in required_fields:
+            continue
+
         cleaned = validated_text(
             value,
             field=f"workflow_input.{field}",
             maximum=200,
         )
+        canonical = CANONICAL_VALUES.get((owner, field))
 
-        canonical = CANONICAL_VALUES.get(
-            (owner, field)
-        )
-
-        if (
-            canonical is not None
-            and cleaned not in canonical
-        ):
+        if canonical is not None and cleaned not in canonical:
             raise AuthorizationError(
                 reason="invalid_intake_value",
                 target_owner=owner,
                 details={
-                    "field": (
-                        f"workflow_input.{field}"
-                    ),
+                    "field": f"workflow_input.{field}",
                 },
             )
 
@@ -268,17 +166,12 @@ def _validated_workflow_input(
 def validate_proposal(
     proposal: dict[str, Any],
 ) -> dict[str, Any]:
-    extra_fields = (
-        set(proposal)
-        - ALLOWED_PROPOSAL_FIELDS
-    )
+    extra_fields = set(proposal) - ALLOWED_PROPOSAL_FIELDS
 
     if extra_fields:
         raise AuthorizationError(
             reason="intake_field_not_authorized",
-            details={
-                "fields": sorted(extra_fields),
-            },
+            details={"fields": sorted(extra_fields)},
         )
 
     title = validated_text(
@@ -303,14 +196,12 @@ def validate_proposal(
             target_owner=owner,
         )
 
-    workflow_input = (
-        _validated_workflow_input(
-            owner=owner,
-            workflow_input=proposal.get(
-                "workflow_input",
-                {},
-            ),
-        )
+    workflow_input = _validated_workflow_input(
+        owner=owner,
+        workflow_input=proposal.get(
+            "workflow_input",
+            {},
+        ),
     )
 
     human_approval_required = proposal.get(
@@ -318,16 +209,11 @@ def validate_proposal(
         False,
     )
 
-    if not isinstance(
-        human_approval_required,
-        bool,
-    ):
+    if not isinstance(human_approval_required, bool):
         raise AuthorizationError(
             reason="invalid_intake_value",
             target_owner=owner,
-            details={
-                "field": "human_approval_required",
-            },
+            details={"field": "human_approval_required"},
         )
 
     return {
@@ -335,9 +221,7 @@ def validate_proposal(
         "description": description,
         "owner": owner,
         "workflow_input": workflow_input,
-        "human_approval_required": (
-            human_approval_required
-        ),
+        "human_approval_required": human_approval_required,
     }
 
 
