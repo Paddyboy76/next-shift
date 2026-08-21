@@ -25,6 +25,28 @@ VERIFIER_DIR="${REPO}/services/verifier_runtime"
 OPERATIONS_DIR="${REPO}/services/operations_ui"
 
 
+assert_no_direct_data_roles() {
+    local service_account="$1"
+    local role
+
+    while IFS= read -r role; do
+        [[ -z "${role}" ]] && continue
+
+        case "${role}" in
+            roles/datastore.*|roles/firebase.*|roles/editor|roles/owner)
+                echo "ERROR: ${service_account} has prohibited direct-data role ${role}"
+                exit 1
+                ;;
+        esac
+    done < <(
+        gcloud projects get-iam-policy "${PROJECT_ID}" \
+            --flatten='bindings[].members' \
+            --filter="bindings.members:serviceAccount:${service_account}" \
+            --format='value(bindings.role)'
+    )
+}
+
+
 echo "===== VERIFY PROJECT ====="
 ACTIVE_PROJECT="$(gcloud config get-value project 2>/dev/null)"
 
@@ -65,6 +87,13 @@ fi
 
 echo "EVIDENCE_SA=${EVIDENCE_SA}"
 echo "VERIFIER_SA=${VERIFIER_SA}"
+
+
+echo
+echo "===== ENFORCE NO DIRECT FIRESTORE ACCESS ====="
+assert_no_direct_data_roles "${EVIDENCE_SA}"
+assert_no_direct_data_roles "${VERIFIER_SA}"
+echo "COMPLETION_IDENTITIES_NO_DIRECT_DATA_ROLES=1"
 
 
 echo
