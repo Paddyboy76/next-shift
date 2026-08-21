@@ -10,5 +10,10 @@ htmlcov/
 .DS_Store
 *.log
 
+# Python packaging artifacts
+build/
+*.egg-info/
+*.whl
+
 # Google ADK local runtime state
 .adk/
