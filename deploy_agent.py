@@ -33,8 +33,6 @@ RUNTIME_REQUIREMENTS = [
     "google-cloud-aiplatform[agent_engines,adk]==1.165.0",
     "cloudpickle==3.1.2",
     "pydantic==2.13.4",
-    "google-cloud-firestore==2.28.1",
-    "google-cloud-pubsub==2.39.0",
 ]
 
 

@@ -47,9 +47,9 @@ class AgentRuntimeDeployTests(unittest.TestCase):
         self.assertIn('name = "next-shift-runtime"', pyproject)
         self.assertIn('include = ["next_shift*"]', pyproject)
 
-    def test_deploy_includes_runtime_cloud_dependencies(self) -> None:
-        self.assertIn("google-cloud-firestore==2.28.1", self.source)
-        self.assertIn("google-cloud-pubsub==2.39.0", self.source)
+    def test_runtime_has_no_explicit_persistence_or_dispatch_sdks(self) -> None:
+        self.assertNotIn("google-cloud-firestore", self.source)
+        self.assertNotIn("google-cloud-pubsub", self.source)
 
     def test_deploy_matches_local_serialization_versions(self) -> None:
         self.assertIn("cloudpickle==3.1.2", self.source)
