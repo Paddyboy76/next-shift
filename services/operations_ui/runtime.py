@@ -26,20 +26,23 @@ STREAM_URL = (
     f"{REASONING_ENGINE_ID}:streamQuery"
 )
 
+OWNER_BUCKETS = {
+    "facilities": "Facilities",
+    "asset_logistics": "AssetLogistics",
+    "language_access": "LanguageAccess",
+    "discharge_dme": "DischargeDME",
+    "evs_throughput": "EVSThroughput",
+    "patient_transport": "PatientTransport",
+}
+
 
 def _access_token() -> str:
-    credentials, _ = (
-        google.auth.default(
-            scopes=[
-                "https://www.googleapis.com/"
-                "auth/cloud-platform"
-            ]
-        )
+    credentials, _ = google.auth.default(
+        scopes=[
+            "https://www.googleapis.com/auth/cloud-platform"
+        ]
     )
-
-    credentials.refresh(
-        GoogleAuthRequest()
-    )
+    credentials.refresh(GoogleAuthRequest())
 
     if not credentials.token:
         raise RuntimeError(
@@ -49,25 +52,41 @@ def _access_token() -> str:
     return credentials.token
 
 
+def _flatten_owner_buckets(
+    value: dict[str, Any],
+) -> list[dict[str, Any]] | None:
+    issues: list[dict[str, Any]] = []
+
+    for bucket, owner in OWNER_BUCKETS.items():
+        bucket_items = value.get(bucket)
+
+        if not isinstance(bucket_items, list):
+            return None
+
+        for item in bucket_items:
+            if not isinstance(item, dict):
+                return None
+
+            proposal = dict(item)
+            proposal["owner"] = owner
+            issues.append(proposal)
+
+    return issues
+
+
 def _normalize_intake_result(
     value: Any,
 ) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
 
-    issues = value.get("issues")
     rejected = value.get(
         "rejected_clinical_requests"
     )
     summary = value.get("summary")
 
     if (
-        not isinstance(issues, list)
-        or not all(
-            isinstance(item, dict)
-            for item in issues
-        )
-        or not isinstance(rejected, list)
+        not isinstance(rejected, list)
         or not all(
             isinstance(item, str)
             for item in rejected
@@ -77,11 +96,29 @@ def _normalize_intake_result(
     ):
         return None
 
-    return {
-        "issues": [
+    issues = _flatten_owner_buckets(value)
+
+    # Preserve compatibility with already-deployed structured outputs while
+    # the canonical Agent Runtime moves to the stricter owner-bucket schema.
+    if issues is None:
+        legacy_issues = value.get("issues")
+
+        if (
+            not isinstance(legacy_issues, list)
+            or not all(
+                isinstance(item, dict)
+                for item in legacy_issues
+            )
+        ):
+            return None
+
+        issues = [
             dict(item)
-            for item in issues
-        ],
+            for item in legacy_issues
+        ]
+
+    return {
+        "issues": issues,
         "rejected_clinical_requests": [
             item.strip()
             for item in rejected
@@ -120,9 +157,7 @@ def _structured_results(
 ) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
 
-    normalized = _normalize_intake_result(
-        value
-    )
+    normalized = _normalize_intake_result(value)
 
     if normalized is not None:
         results.append(normalized)
@@ -167,9 +202,6 @@ def _event_from_stream_line(
     ):
         return None
     else:
-        # The deployed Agent Runtime currently returns one bare JSON
-        # object per line even when alt=sse is requested. Accept both
-        # that real shape and conventional SSE data: framing.
         payload = line
 
     if not payload or payload == "[DONE]":
@@ -211,21 +243,13 @@ def submit_handover(
 ) -> dict[str, Any]:
     response = requests.post(
         STREAM_URL,
-        params={
-            "alt": "sse",
-        },
+        params={"alt": "sse"},
         headers={
-            "Authorization": (
-                f"Bearer {_access_token()}"
-            ),
-            "Content-Type": (
-                "application/json"
-            ),
+            "Authorization": f"Bearer {_access_token()}",
+            "Content-Type": "application/json",
         },
         json={
-            "class_method": (
-                "async_stream_query"
-            ),
+            "class_method": "async_stream_query",
             "input": {
                 "user_id": user_id,
                 "message": message,
@@ -240,8 +264,7 @@ def submit_handover(
             "blocked": True,
             "status": "blocked",
             "message": (
-                "The governed intake policy "
-                "blocked this request."
+                "The governed intake policy blocked this request."
             ),
             "structured_output": True,
             "proposals": [],
@@ -258,9 +281,7 @@ def submit_handover(
         if not raw_line:
             continue
 
-        event = _event_from_stream_line(
-            raw_line
-        )
+        event = _event_from_stream_line(raw_line)
 
         if event is None:
             continue
