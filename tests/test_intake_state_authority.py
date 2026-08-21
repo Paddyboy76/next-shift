@@ -22,6 +22,9 @@ STATE_MAIN = (
 STATE_INTAKE = (
     ROOT / "services" / "state_authority" / "intake.py"
 )
+STATE_VALIDATION = (
+    ROOT / "services" / "state_authority" / "intake_validation.py"
+)
 STATE_DISPATCH = (
     ROOT / "services" / "state_authority" / "intake_dispatch.py"
 )
@@ -45,7 +48,6 @@ class IntakeStateAuthorityTests(unittest.TestCase):
                         ),
                         "owner": "AssetLogistics",
                         "workflow_input": {
-                            "asset_type": "standard wheelchair",
                             "destination": "Room 512",
                         },
                         "human_approval_required": False,
@@ -156,6 +158,32 @@ class IntakeStateAuthorityTests(unittest.TestCase):
         self.assertIn(
             'f"{authority_url}/v1/issues"',
             client_source,
+        )
+
+    def test_state_authority_allowlists_model_workflow_fields(self) -> None:
+        validation_source = STATE_VALIDATION.read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "WORKFLOW_FIELDS_BY_OWNER",
+            validation_source,
+        )
+        self.assertIn(
+            "workflow_input_field_not_authorized",
+            validation_source,
+        )
+        self.assertIn(
+            '"home_oxygen"',
+            validation_source,
+        )
+        self.assertIn(
+            '"air_conditioning"',
+            validation_source,
+        )
+        self.assertIn(
+            '"wheelchair"',
+            validation_source,
         )
 
     def test_state_authority_owns_creation_and_dispatch(self) -> None:
