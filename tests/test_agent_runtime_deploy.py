@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPLOY_FILE = ROOT / "deploy_agent.py"
+PYPROJECT_FILE = ROOT / "pyproject.toml"
 
 
 class AgentRuntimeDeployTests(unittest.TestCase):
@@ -21,9 +22,18 @@ class AgentRuntimeDeployTests(unittest.TestCase):
     def test_deploy_preserves_managed_agent_identity(self) -> None:
         self.assertIn("types.IdentityType.AGENT_IDENTITY", self.source)
 
-    def test_deploy_bundles_local_next_shift_package(self) -> None:
-        self.assertIn('NEXT_SHIFT_PACKAGE = ROOT / "next_shift"', self.source)
-        self.assertIn('"extra_packages": [str(NEXT_SHIFT_PACKAGE)]', self.source)
+    def test_deploy_builds_installable_runtime_wheel(self) -> None:
+        self.assertIn('"pip",', self.source)
+        self.assertIn('"wheel",', self.source)
+        self.assertIn('output_dir.glob("next_shift_runtime-*.whl")', self.source)
+        self.assertIn('wheel_path.name', self.source)
+        self.assertIn('"extra_packages": [str(wheel_path)]', self.source)
+
+    def test_runtime_package_metadata_includes_next_shift(self) -> None:
+        self.assertTrue(PYPROJECT_FILE.is_file())
+        pyproject = PYPROJECT_FILE.read_text(encoding="utf-8")
+        self.assertIn('name = "next-shift-runtime"', pyproject)
+        self.assertIn('include = ["next_shift*"]', pyproject)
 
     def test_deploy_includes_runtime_cloud_dependencies(self) -> None:
         self.assertIn("google-cloud-firestore==2.28.1", self.source)
