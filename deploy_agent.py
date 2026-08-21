@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,7 +48,26 @@ app = agent_engines.AdkApp(
 )
 
 
-def _build_runtime_wheel(output_dir: Path) -> Path:
+def _build_runtime_wheel(work_dir: Path) -> Path:
+    source_dir = work_dir / "source"
+    wheel_dir = work_dir / "wheel"
+
+    source_dir.mkdir(parents=True)
+    wheel_dir.mkdir(parents=True)
+
+    shutil.copy2(
+        PYPROJECT,
+        source_dir / "pyproject.toml",
+    )
+    shutil.copytree(
+        NEXT_SHIFT_PACKAGE,
+        source_dir / "next_shift",
+        ignore=shutil.ignore_patterns(
+            "__pycache__",
+            "*.pyc",
+        ),
+    )
+
     subprocess.run(
         [
             sys.executable,
@@ -55,15 +76,15 @@ def _build_runtime_wheel(output_dir: Path) -> Path:
             "wheel",
             "--no-deps",
             "--wheel-dir",
-            str(output_dir),
-            str(ROOT),
+            str(wheel_dir),
+            str(source_dir),
         ],
-        cwd=ROOT,
+        cwd=work_dir,
         check=True,
     )
 
     wheels = sorted(
-        output_dir.glob("next_shift_runtime-*.whl")
+        wheel_dir.glob("next_shift_runtime-*.whl")
     )
 
     if len(wheels) != 1:
@@ -73,6 +94,22 @@ def _build_runtime_wheel(output_dir: Path) -> Path:
         )
 
     return wheels[0]
+
+
+def _stage_runtime_wheel(wheel_path: Path) -> Path:
+    staged_wheel = ROOT / wheel_path.name
+
+    if staged_wheel.exists():
+        raise FileExistsError(
+            f"Refusing to overwrite existing runtime wheel: {staged_wheel}"
+        )
+
+    shutil.copy2(
+        wheel_path,
+        staged_wheel,
+    )
+
+    return staged_wheel
 
 
 def main() -> None:
@@ -95,25 +132,36 @@ def main() -> None:
         wheel_path = _build_runtime_wheel(
             Path(temp_dir)
         )
+        staged_wheel = _stage_runtime_wheel(
+            wheel_path
+        )
 
         requirements = [
             *RUNTIME_REQUIREMENTS,
-            wheel_path.name,
+            staged_wheel.name,
         ]
 
-        print(f"RUNTIME_WHEEL={wheel_path}")
+        print(f"RUNTIME_WHEEL={staged_wheel}")
 
-        remote_agent = client.agent_engines.update(
-            name=RESOURCE_NAME,
-            agent=app,
-            config={
-                "display_name": "Next Shift",
-                "requirements": requirements,
-                "extra_packages": [str(wheel_path)],
-                "staging_bucket": STAGING_BUCKET,
-                "identity_type": types.IdentityType.AGENT_IDENTITY,
-            },
-        )
+        previous_cwd = Path.cwd()
+
+        try:
+            os.chdir(ROOT)
+
+            remote_agent = client.agent_engines.update(
+                name=RESOURCE_NAME,
+                agent=app,
+                config={
+                    "display_name": "Next Shift",
+                    "requirements": requirements,
+                    "extra_packages": [staged_wheel.name],
+                    "staging_bucket": STAGING_BUCKET,
+                    "identity_type": types.IdentityType.AGENT_IDENTITY,
+                },
+            )
+        finally:
+            os.chdir(previous_cwd)
+            staged_wheel.unlink(missing_ok=True)
 
     print("UPDATE_COMPLETE")
     print(remote_agent)
