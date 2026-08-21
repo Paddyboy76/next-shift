@@ -147,6 +147,26 @@ def intake():
     if result.get("blocked") is True:
         return jsonify(result)
 
+    if result.get("structured_output") is not True:
+        return (
+            jsonify(
+                {
+                    "blocked": False,
+                    "status": "invalid_agent_output",
+                    "error": "structured_output_required",
+                    "message": result.get(
+                        "message",
+                        (
+                            "The Agent Runtime did not return the required "
+                            "structured intake result. No durable work was "
+                            "created."
+                        ),
+                    ),
+                }
+            ),
+            502,
+        )
+
     proposals = result.pop(
         "proposals",
         [],
@@ -157,11 +177,11 @@ def intake():
             jsonify(
                 {
                     "blocked": False,
-                    "status": "persistence_failed",
-                    "error": "invalid_agent_output",
+                    "status": "invalid_agent_output",
+                    "error": "invalid_proposal_payload",
                     "message": (
-                        "The intake analysis returned an invalid "
-                        "proposal payload. No workflow mutation was made."
+                        "The structured intake result contained an invalid "
+                        "proposal payload. No durable work was created."
                     ),
                 }
             ),
@@ -169,6 +189,7 @@ def intake():
         )
 
     if not proposals:
+        result["status"] = "accepted_no_work"
         result["issue_count"] = 0
         result["issues"] = []
         return jsonify(result)
