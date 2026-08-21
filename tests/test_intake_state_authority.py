@@ -20,6 +20,9 @@ STATE_MAIN = (
 STATE_INTAKE = (
     ROOT / "services" / "state_authority" / "intake.py"
 )
+STATE_DISPATCH = (
+    ROOT / "services" / "state_authority" / "intake_dispatch.py"
+)
 STATE_POLICY = (
     ROOT / "services" / "state_authority" / "policy.py"
 )
@@ -81,7 +84,7 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             main_source,
         )
         self.assertIn(
-            'STATE_AUTHORITY_URL',
+            "STATE_AUTHORITY_URL",
             client_source,
         )
         self.assertIn(
@@ -94,6 +97,9 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             encoding="utf-8"
         )
         intake_source = STATE_INTAKE.read_text(
+            encoding="utf-8"
+        )
+        dispatch_source = STATE_DISPATCH.read_text(
             encoding="utf-8"
         )
         policy_source = STATE_POLICY.read_text(
@@ -120,8 +126,12 @@ class IntakeStateAuthorityTests(unittest.TestCase):
             policy_source,
         )
         self.assertIn(
-            "pubsub_v1.PublisherClient()",
+            "publish_received(issue)",
             intake_source,
+        )
+        self.assertIn(
+            "pubsub_v1.PublisherClient()",
+            dispatch_source,
         )
         self.assertIn(
             '"state": "RECEIVED"',
