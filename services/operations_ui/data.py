@@ -61,6 +61,22 @@ def _time_key(
     return str(value)
 
 
+def _dimension_key(
+    value: Any,
+    *,
+    fallback: str,
+) -> str:
+    if not isinstance(value, str):
+        return fallback
+
+    normalized = value.strip()
+
+    if not normalized:
+        return fallback
+
+    return normalized
+
+
 def list_issues(
     limit: int = 120,
 ) -> list[dict[str, Any]]:
@@ -181,17 +197,17 @@ def dashboard_summary() -> dict[str, Any]:
     )
 
     state_counts = Counter(
-        issue.get(
-            "state",
-            "UNKNOWN",
+        _dimension_key(
+            issue.get("state"),
+            fallback="UNKNOWN",
         )
         for issue in issues
     )
 
     owner_counts = Counter(
-        issue.get(
-            "owner",
-            "Unknown",
+        _dimension_key(
+            issue.get("owner"),
+            fallback="Unknown",
         )
         for issue in issues
     )
