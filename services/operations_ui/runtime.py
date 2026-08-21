@@ -78,6 +78,55 @@ def _extract_text(
     return results
 
 
+def _extract_proposals(
+    value: Any,
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    if isinstance(value, dict):
+        if value.get("proposal_type") == "handover_issue":
+            proposal = value.get("proposal")
+
+            if isinstance(proposal, dict):
+                results.append(dict(proposal))
+
+        for item in value.values():
+            results.extend(
+                _extract_proposals(item)
+            )
+
+    elif isinstance(value, list):
+        for item in value:
+            results.extend(
+                _extract_proposals(item)
+            )
+
+    return results
+
+
+def _dedupe_proposals(
+    proposals: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    unique: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for proposal in proposals:
+        key = json.dumps(
+            proposal,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique.append(proposal)
+
+    return unique
+
+
 def submit_handover(
     *,
     message: str,
@@ -117,11 +166,13 @@ def submit_handover(
                 "The governed intake policy "
                 "blocked this request."
             ),
+            "proposals": [],
         }
 
     response.raise_for_status()
 
     text_parts: list[str] = []
+    proposals: list[dict[str, Any]] = []
 
     for raw_line in response.iter_lines(
         decode_unicode=True
@@ -147,24 +198,30 @@ def submit_handover(
         text_parts.extend(
             _extract_text(event)
         )
+        proposals.extend(
+            _extract_proposals(event)
+        )
 
-    unique: list[str] = []
+    unique_text: list[str] = []
 
     for text in text_parts:
         if (
             text
-            and text not in unique
+            and text not in unique_text
         ):
-            unique.append(text)
+            unique_text.append(text)
 
     return {
         "blocked": False,
         "status": "accepted",
         "message": (
-            "\n\n".join(unique[-6:])
+            "\n\n".join(unique_text[-6:])
             or (
-                "Handover accepted. "
-                "Operational state is updating."
+                "Handover analyzed. "
+                "Validated operational proposals are being persisted."
             )
+        ),
+        "proposals": _dedupe_proposals(
+            proposals
         ),
     }
