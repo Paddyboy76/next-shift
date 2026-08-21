@@ -14,6 +14,7 @@ from security import AuthorizationError
 
 
 PROJECT_ID = "next-shift-506004"
+ISSUE_COLLECTION = "handover_issues"
 READ_CAPABILITY = "human_reach.read_delivery"
 UPDATE_CAPABILITY = "human_reach.delivery_update"
 EXPECTED_OWNER = "HumanReach"
@@ -193,6 +194,64 @@ def dispatch_staged_delivery(
         "delivery_id": delivery_id,
         **updates,
     }
+
+
+def ensure_delivery_for_action_pending(
+    *,
+    issue_id: str,
+) -> dict[str, Any]:
+    db = _db()
+    issue_ref = db.collection(ISSUE_COLLECTION).document(issue_id)
+    delivery_ref = db.collection(DELIVERY_COLLECTION).document(issue_id)
+    transaction = db.transaction()
+
+    @firestore.transactional
+    def _ensure(tx: firestore.Transaction) -> dict[str, Any]:
+        issue_snapshot = issue_ref.get(transaction=tx)
+        delivery_snapshot = delivery_ref.get(transaction=tx)
+
+        if not issue_snapshot.exists:
+            raise AuthorizationError(reason="issue_not_found")
+
+        issue = issue_snapshot.to_dict() or {}
+        owner = str(issue.get("owner", "UNKNOWN"))
+
+        if issue.get("state") != "ACTION_PENDING":
+            raise AuthorizationError(
+                reason="human_reach_issue_state_mismatch",
+                target_owner=owner,
+                details={
+                    "expected": "ACTION_PENDING",
+                    "current": issue.get("state"),
+                },
+            )
+
+        if delivery_snapshot.exists:
+            return delivery_snapshot.to_dict() or {}
+
+        delivery = build_delivery_request(
+            issue_id=issue_id,
+            issue=issue,
+            requested_at=_now_iso(),
+        )
+        tx.set(delivery_ref, delivery)
+        return delivery
+
+    delivery = _ensure(transaction)
+
+    if delivery.get("event_dispatch_status") == "PUBLISHED":
+        return {
+            "delivery_id": issue_id,
+            "event_dispatch_status": "PUBLISHED",
+            "reused": True,
+        }
+
+    dispatch = dispatch_staged_delivery(delivery)
+    dispatch["reused"] = bool(
+        delivery.get("event_dispatch_status")
+        not in {None, "PENDING"}
+    )
+    return dispatch
 
 
 def authorize_and_get_delivery(
