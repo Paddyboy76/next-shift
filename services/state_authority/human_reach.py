@@ -129,6 +129,24 @@ def _clean_text(
     return cleaned
 
 
+def _require_action_pending_issue(
+    issue: dict[str, Any],
+    *,
+    owner: str,
+) -> None:
+    current_state = issue.get("state")
+
+    if current_state != "ACTION_PENDING":
+        raise AuthorizationError(
+            reason="human_reach_stale_response",
+            target_owner=owner,
+            details={
+                "expected": "ACTION_PENDING",
+                "current": current_state,
+            },
+        )
+
+
 def stage_delivery_request(
     *,
     transaction: firestore.Transaction,
@@ -471,6 +489,30 @@ def authorize_and_record_response(
 
         delivery = snapshot.to_dict() or {}
         owner = str(delivery.get("owner", "UNKNOWN"))
+        issue_id = delivery.get("issue_id")
+
+        if not isinstance(issue_id, str) or not issue_id:
+            raise AuthorizationError(
+                reason="human_reach_issue_reference_invalid",
+                target_owner=owner,
+            )
+
+        issue_snapshot = (
+            db.collection(ISSUE_COLLECTION)
+            .document(issue_id)
+            .get(transaction=tx)
+        )
+
+        if not issue_snapshot.exists:
+            raise AuthorizationError(
+                reason="issue_not_found",
+                target_owner=owner,
+            )
+
+        _require_action_pending_issue(
+            issue_snapshot.to_dict() or {},
+            owner=owner,
+        )
 
         if delivery.get("destination_space") != source_space:
             raise AuthorizationError(
