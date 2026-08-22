@@ -59,7 +59,10 @@ class HumanReachEventBoundRouteTests(unittest.TestCase):
 
         self.assertIn('ROUTE_COLLECTION = "human_reach_routes"', source)
         self.assertIn("human_reach_route_conflict", source)
-        self.assertIn("source\": \"google_chat_interaction_event", source)
+        self.assertIn(
+            '"source": "google_chat_interaction_event"',
+            source,
+        )
         self.assertIn("/v1/human-reach/routes/register", api)
         self.assertIn("/v1/human-reach/routes/resolve", api)
         self.assertIn("/v1/human-reach/routes/deactivate", api)
