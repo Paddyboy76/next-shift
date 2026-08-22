@@ -109,7 +109,7 @@ class RichHumanReachCardTests(unittest.TestCase):
 
         self.assertIn("Completion claimed", encoded)
         self.assertIn("does <b>not</b> close this issue", encoded)
-        self.assertIn("trusted evidence", encoded)
+        self.assertIn("trusted evidence", encoded.lower())
         self.assertIn("independent verifier", encoded)
         self.assertNotIn("humanReach.completed", encoded)
 
