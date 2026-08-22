@@ -1,9 +1,49 @@
 from flask import jsonify
+from flask import request
 
+from auth import authorize_chat_request
+from auth import authorize_pubsub_request
 from main import _resolve_space
 from main import _routes
 from main import app
 from main import chat_event
+
+
+@app.before_request
+def verify_ingress_identity():
+    authorization = request.headers.get(
+        "Authorization"
+    )
+
+    if (
+        request.method == "POST"
+        and request.path in {"/", "/chat"}
+    ):
+        if not authorize_chat_request(
+            authorization
+        ):
+            return (
+                jsonify(
+                    {"error": "chat_authentication_required"}
+                ),
+                401,
+            )
+
+    if (
+        request.method == "POST"
+        and request.path == "/pubsub"
+    ):
+        if not authorize_pubsub_request(
+            authorization
+        ):
+            return (
+                jsonify(
+                    {"error": "pubsub_authentication_required"}
+                ),
+                401,
+            )
+
+    return None
 
 
 app.add_url_rule(
@@ -17,13 +57,9 @@ app.add_url_rule(
 def readiness():
     try:
         routes = _routes()
-        resolved = {
-            owner: {
-                "space": _resolve_space(owner)[0],
-                "display_name": display_name,
-            }
-            for owner, display_name in routes.items()
-        }
+
+        for owner in routes:
+            _resolve_space(owner)
     except Exception as exc:
         return (
             jsonify(
@@ -39,7 +75,7 @@ def readiness():
         {
             "status": "ready",
             "channel": "google_chat",
-            "routes": resolved,
+            "route_count": len(routes),
         }
     )
 
