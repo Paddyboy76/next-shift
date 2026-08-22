@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Next Shift — Governed Lifecycle Trace</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      background: #071019;
+      color: #e8f2f7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #071019; }
+    main { width: min(1180px, 100%); margin: 0 auto; padding: 28px; }
+    a { color: #7ce1d4; }
+    .top { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 24px; }
+    .eyebrow { color: #42cabb; text-transform: uppercase; letter-spacing: .11em; font-size: 10px; font-weight: 800; }
+    h1 { margin: 5px 0 4px; font-size: 24px; }
+    .sub { color: #88a4b4; font-size: 12px; }
+    .summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin: 18px 0 26px; }
+    .summary div { padding: 12px; border: 1px solid #203440; border-radius: 10px; background: #0c1c26; }
+    .summary span { display: block; color: #88a4b4; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .summary strong { display: block; margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+    .trace { position: relative; margin-left: 11px; border-left: 2px solid #294455; }
+    .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid #203946; border-radius: 10px; background: #0c1c26; }
+    .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: #42cabb; border: 3px solid #071019; }
+    .event-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .stage { color: #42cabb; font-size: 9px; font-weight: 800; letter-spacing: .09em; }
+    .status { padding: 3px 7px; border: 1px solid #39746f; border-radius: 999px; color: #8ee9df; font-size: 9px; font-weight: 800; }
+    .event h2 { margin: 5px 0 7px; font-size: 15px; }
+    .meta { color: #a8c1cf; font-size: 11px; line-height: 1.5; }
+    .detail { margin-top: 8px; color: #d4e3e9; font-size: 12px; line-height: 1.45; }
+    .ids { display: grid; gap: 4px; margin-top: 9px; }
+    .ids code { display: block; padding: 5px 7px; border-radius: 6px; background: #091923; color: #a8c1cf; font-size: 10px; overflow-wrap: anywhere; white-space: normal; }
+    .empty { padding: 20px; border: 1px solid #203440; border-radius: 10px; color: #a8c1cf; }
+    @media (max-width: 760px) {
+      main { padding: 18px; }
+      .top { flex-direction: column; }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <div>
+        <span class="eyebrow">Next Shift observability</span>
+        <h1>Governed lifecycle trace</h1>
+        <div class="sub">Authoritative operational evidence assembled from Firestore records. No synthetic telemetry.</div>
+      </div>
+      <a href="/">Back to Operations Control</a>
+    </div>
+
+    {% if error %}
+      <div class="empty">{{ error }}</div>
+    {% elif trace %}
+      <section class="summary">
+        <div><span>Issue</span><strong>{{ trace.issue_id }}</strong></div>
+        <div><span>Owner</span><strong>{{ trace.owner }}</strong></div>
+        <div><span>Work order</span><strong>{{ trace.work_order or '—' }}</strong></div>
+        <div><span>Authoritative state</span><strong>{{ trace.current_state }}{% if trace.verification_status %} · {{ trace.verification_status }}{% endif %}</strong></div>
+      </section>
+
+      <div class="trace">
+        {% for item in trace.items %}
+          <article class="event">
+            <div class="event-top">
+              <div>
+                <div class="stage">{{ item.stage }}</div>
+                <h2>{{ item.title }}</h2>
+              </div>
+              <span class="status">{{ item.status }}</span>
+            </div>
+            <div class="meta">
+              {{ item.at or 'Timestamp unavailable' }}<br>
+              Authority: {{ item.authority }}{% if item.actor %}<br>Actor: {{ item.actor }}{% endif %}
+            </div>
+            {% if item.detail %}<div class="detail">{{ item.detail }}</div>{% endif %}
+            {% if item.identifiers %}
+              <div class="ids">
+                {% for key, value in item.identifiers.items() %}
+                  <code>{{ key }} = {{ value }}</code>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </main>
+</body>
+</html>
