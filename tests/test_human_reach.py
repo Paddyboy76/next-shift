@@ -18,6 +18,7 @@ DEPLOY = ROOT / "deploy_human_reach.sh"
 if str(STATE_DIR) not in sys.path:
     sys.path.insert(0, str(STATE_DIR))
 
+import human_reach as state_human_reach  # noqa: E402
 from human_reach_contract import build_delivery_request  # noqa: E402
 from human_reach_privacy import pseudonymous_responder  # noqa: E402
 from security import AuthorizationError  # noqa: E402
@@ -121,6 +122,30 @@ class HumanReachTests(unittest.TestCase):
                 issue=base_issue("Facilities"),
                 requested_at="2026-08-21T08:00:00+00:00",
             )
+
+    def test_stale_human_reach_response_requires_action_pending_issue(self) -> None:
+        state_human_reach._require_action_pending_issue(
+            {"state": "ACTION_PENDING"},
+            owner="PatientTransport",
+        )
+
+        with self.assertRaises(AuthorizationError) as captured:
+            state_human_reach._require_action_pending_issue(
+                {"state": "CLOSED"},
+                owner="PatientTransport",
+            )
+
+        self.assertEqual(
+            captured.exception.reason,
+            "human_reach_stale_response",
+        )
+        self.assertEqual(
+            captured.exception.details,
+            {
+                "expected": "ACTION_PENDING",
+                "current": "CLOSED",
+            },
+        )
 
     def test_routes_require_exact_canonical_owner_map(self) -> None:
         with patch.dict(
