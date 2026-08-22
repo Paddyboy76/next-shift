@@ -3,10 +3,19 @@ from flask import request
 
 from auth import authorize_chat_request
 from auth import authorize_pubsub_request
+import main as human_reach_runtime
 from main import _resolve_space
 from main import _routes
 from main import app
 from main import chat_event
+from rich_card import work_card
+
+
+# Keep the proven delivery/action engine in main.py and replace only the card
+# renderer at process startup. main.py resolves _work_card dynamically, so
+# proactive sends and in-place CARD_CLICKED updates both use the same Cards v2
+# renderer without duplicating workflow logic.
+human_reach_runtime._work_card = work_card
 
 
 @app.before_request
@@ -76,6 +85,7 @@ def readiness():
             "status": "ready",
             "channel": "google_chat",
             "route_count": len(routes),
+            "card_renderer": "cards_v2_rich",
         }
     )
 
