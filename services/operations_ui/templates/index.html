@@ -32,6 +32,13 @@
     </div>
   </header>
 
+  <div
+    id="refresh-alert"
+    class="refresh-alert hidden"
+    role="status"
+    aria-live="polite"
+  ></div>
+
   <main>
     <section class="hero-grid">
       <article class="panel intake-panel">
@@ -62,21 +69,21 @@
         <span class="eyebrow">Operational state</span>
 
         <div class="metrics">
-          <div>
+          <div class="metric-open">
             <strong id="metric-open">—</strong>
             <span>Open work</span>
           </div>
-          <div>
+          <div class="metric-verifying">
             <strong id="metric-verifying">—</strong>
             <span>Verifying</span>
           </div>
-          <div>
-            <strong id="metric-closed">—</strong>
-            <span>Closed</span>
-          </div>
-          <div>
+          <div class="metric-review">
             <strong id="metric-review">—</strong>
             <span>Human review</span>
+          </div>
+          <div class="metric-closed">
+            <strong id="metric-closed">—</strong>
+            <span>Verified closed</span>
           </div>
         </div>
       </article>
@@ -97,10 +104,10 @@
         <section class="focus-section" aria-labelledby="focus-heading">
           <div class="subsection-heading">
             <div>
-              <span class="eyebrow">Newest active work</span>
+              <span class="eyebrow">Priority work</span>
               <h3 id="focus-heading">Needs attention now</h3>
             </div>
-            <span class="subtle-note">Newest updates first</span>
+            <span class="subtle-note">Actionability first · newest within each priority</span>
           </div>
           <div id="latest-work" class="latest-work"></div>
         </section>
@@ -108,15 +115,28 @@
         <section class="workflow-section" aria-labelledby="workflow-heading">
           <div class="subsection-heading">
             <div>
-              <span class="eyebrow">Workflow</span>
-              <h3 id="workflow-heading">Work by state</h3>
+              <span class="eyebrow">Active workflow</span>
+              <h3 id="workflow-heading">Open work by state</h3>
             </div>
-            <span class="subtle-note">Click any card for full history</span>
+            <span class="subtle-note">Empty states collapse automatically</span>
           </div>
           <div
             id="board"
             class="board"
           ></div>
+        </section>
+
+        <section class="inactive-section" aria-labelledby="inactive-heading">
+          <details id="inactive-work">
+            <summary>
+              <span>
+                <span class="eyebrow">History</span>
+                <strong id="inactive-heading">Closed and failed work</strong>
+              </span>
+              <span id="inactive-count" class="subtle-note">0 items</span>
+            </summary>
+            <div id="inactive-board" class="inactive-board"></div>
+          </details>
         </section>
       </div>
 
@@ -141,10 +161,14 @@
   <aside
     id="drawer"
     class="drawer hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Operational issue detail"
   >
     <button
       id="drawer-close"
       class="drawer-close"
+      aria-label="Close issue detail"
     >
       ×
     </button>
