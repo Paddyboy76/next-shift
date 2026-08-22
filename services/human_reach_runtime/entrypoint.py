@@ -3,19 +3,20 @@ from flask import request
 
 from auth import authorize_chat_request
 from auth import authorize_pubsub_request
+import durable_routes
 import main as human_reach_runtime
-from main import _resolve_space
 from main import _routes
 from main import app
-from main import chat_event
 from rich_card import work_card
 
 
-# Keep the proven delivery/action engine in main.py and replace only the card
-# renderer at process startup. main.py resolves _work_card dynamically, so
-# proactive sends and in-place CARD_CLICKED updates both use the same Cards v2
-# renderer without duplicating workflow logic.
+# Keep the proven delivery/action engine in main.py and replace only the
+# integration adapters at process startup. Delivery continues to use the same
+# Human Reach engine, while durable route resolution is owned by State
+# Authority instead of Google Chat space-list discovery.
 human_reach_runtime._work_card = work_card
+human_reach_runtime._resolve_space = durable_routes.resolve_space
+_original_chat_event = human_reach_runtime.chat_event
 
 
 @app.before_request
@@ -55,10 +56,38 @@ def verify_ingress_identity():
     return None
 
 
+def chat_event_with_durable_routes():
+    event = request.get_json(silent=True)
+
+    if isinstance(event, dict):
+        event_type = human_reach_runtime._event_type(event)
+
+        if event_type in {"ADDED_TO_SPACE", "MESSAGE"}:
+            try:
+                durable_routes.register_space_from_event(event)
+            except Exception:
+                app.logger.exception(
+                    "Human Reach could not persist Google Chat route"
+                )
+        elif event_type == "REMOVED_FROM_SPACE":
+            try:
+                durable_routes.deactivate_space_from_event(event)
+            except Exception:
+                app.logger.exception(
+                    "Human Reach could not deactivate Google Chat route"
+                )
+
+    return _original_chat_event()
+
+
+# main.py registered /chat before this entrypoint loaded. Replace its Flask
+# endpoint with the route-aware wrapper and use the same wrapper for the root
+# Google Chat callback configured in Cloud Console.
+app.view_functions["chat_event"] = chat_event_with_durable_routes
 app.add_url_rule(
     "/",
     endpoint="chat_root",
-    view_func=chat_event,
+    view_func=chat_event_with_durable_routes,
     methods=["POST"],
 )
 
@@ -66,12 +95,17 @@ app.add_url_rule(
 def readiness():
     try:
         routes = _routes()
+        checked_display_names: set[str] = set()
 
-        for owner in routes:
-            _resolve_space(owner)
+        for owner, display_name in routes.items():
+            if display_name in checked_display_names:
+                continue
+
+            human_reach_runtime._resolve_space(owner)
+            checked_display_names.add(display_name)
     except Exception as exc:
         app.logger.exception(
-            "Human Reach readiness failed while resolving Google Chat routes"
+            "Human Reach readiness failed while resolving durable Chat routes"
         )
         return (
             jsonify(
@@ -88,6 +122,8 @@ def readiness():
             "status": "ready",
             "channel": "google_chat",
             "route_count": len(routes),
+            "destination_count": len(checked_display_names),
+            "route_source": "state_authority",
             "card_renderer": "cards_v2_rich",
         }
     )
