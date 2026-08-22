@@ -2,28 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  >
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Next Shift — Operations Control</title>
-  <link
-    rel="stylesheet"
-    href="/static/app.css"
-  >
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <div class="brand-row">
-        <span class="brand-mark">NS</span>
-        <div>
-          <h1>Next Shift</h1>
-          <p>Autonomous Operations Control</p>
-        </div>
+    <div class="brand-row">
+      <span class="brand-mark">NS</span>
+      <div>
+        <h1>Next Shift</h1>
+        <p>Autonomous Operations Control</p>
       </div>
     </div>
-
     <div class="security-strip">
       <span>● Live Firestore</span>
       <span>Agent Gateway</span>
@@ -32,12 +23,7 @@
     </div>
   </header>
 
-  <div
-    id="refresh-alert"
-    class="refresh-alert hidden"
-    role="status"
-    aria-live="polite"
-  ></div>
+  <div id="refresh-alert" class="refresh-alert hidden" role="status" aria-live="polite"></div>
 
   <main>
     <section class="hero-grid">
@@ -47,44 +33,22 @@
             <span class="eyebrow">Handover intake</span>
             <h2>What is being left for the next shift?</h2>
           </div>
-          <span class="synthetic-badge">
-            Synthetic data only
-          </span>
+          <span class="synthetic-badge">Synthetic data only</span>
         </div>
-
-        <textarea
-          id="handover"
-          placeholder="Example: Room 402 needs a Spanish interpreter. We still cannot find a standard wheelchair. Home oxygen is pending. The room needs EVS after discharge and the sink is leaking..."
-        ></textarea>
-
+        <textarea id="handover" placeholder="Example: Room 402 needs a Spanish interpreter. We still cannot find a standard wheelchair. Home oxygen is pending. The room needs EVS after discharge and the sink is leaking..."></textarea>
         <div class="intake-actions">
-          <button id="submit-handover">
-            Send to Next Shift
-          </button>
+          <button id="submit-handover">Send to Next Shift</button>
           <div id="intake-status"></div>
         </div>
       </article>
 
       <article class="panel metric-panel">
         <span class="eyebrow">Operational state</span>
-
         <div class="metrics">
-          <div class="metric-open">
-            <strong id="metric-open">—</strong>
-            <span>Open work</span>
-          </div>
-          <div class="metric-verifying">
-            <strong id="metric-verifying">—</strong>
-            <span>Verifying</span>
-          </div>
-          <div class="metric-review">
-            <strong id="metric-review">—</strong>
-            <span>Human review</span>
-          </div>
-          <div class="metric-closed">
-            <strong id="metric-closed">—</strong>
-            <span>Verified closed</span>
-          </div>
+          <div class="metric-open"><strong id="metric-open">—</strong><span>Open work</span></div>
+          <div class="metric-verifying"><strong id="metric-verifying">—</strong><span>Verifying</span></div>
+          <div class="metric-review"><strong id="metric-review">—</strong><span>Human review</span></div>
+          <div class="metric-closed"><strong id="metric-closed">—</strong><span>Verified closed</span></div>
         </div>
       </article>
     </section>
@@ -96,43 +60,36 @@
             <span class="eyebrow">Live issue board</span>
             <h2>Operational work</h2>
           </div>
-          <span id="last-refresh">
-            Loading…
-          </span>
+          <span id="last-refresh">Loading…</span>
         </div>
 
-        <section class="focus-section" aria-labelledby="focus-heading">
+        <section id="attention-section" class="attention-section hidden" aria-labelledby="attention-heading">
           <div class="subsection-heading">
             <div>
-              <span class="eyebrow">Priority work</span>
-              <h3 id="focus-heading">Needs attention now</h3>
+              <span class="eyebrow">Requires intervention</span>
+              <h3 id="attention-heading">Needs attention now</h3>
             </div>
-            <span class="subtle-note">Actionability first · newest within each priority</span>
+            <span class="subtle-note">Only blocked, failed, human-review, or claimed work</span>
           </div>
-          <div id="latest-work" class="latest-work"></div>
+          <div id="attention-work" class="attention-work"></div>
         </section>
 
-        <section class="workflow-section" aria-labelledby="workflow-heading">
-          <div class="subsection-heading">
+        <section class="worklist-section" aria-labelledby="worklist-heading">
+          <div class="subsection-heading worklist-heading-row">
             <div>
-              <span class="eyebrow">Active workflow</span>
-              <h3 id="workflow-heading">Open work by state</h3>
+              <span class="eyebrow">Current queue</span>
+              <h3 id="worklist-heading">Open work</h3>
             </div>
-            <span class="subtle-note">Empty states collapse automatically</span>
+            <span class="subtle-note">Priority first · then newest</span>
           </div>
-          <div
-            id="board"
-            class="board"
-          ></div>
+          <div id="owner-filters" class="owner-filters" aria-label="Filter work by owner"></div>
+          <div id="board" class="worklist"></div>
         </section>
 
         <section class="inactive-section" aria-labelledby="inactive-heading">
           <details id="inactive-work">
             <summary>
-              <span>
-                <span class="eyebrow">History</span>
-                <strong id="inactive-heading">Closed and failed work</strong>
-              </span>
+              <span><span class="eyebrow">History</span><strong id="inactive-heading">Closed and failed work</strong></span>
               <span id="inactive-count" class="subtle-note">0 items</span>
             </summary>
             <div id="inactive-board" class="inactive-board"></div>
@@ -142,37 +99,16 @@
 
       <aside class="panel shift-panel">
         <div class="panel-heading">
-          <div>
-            <span class="eyebrow">Continuity</span>
-            <h2>Shift snapshots</h2>
-          </div>
+          <div><span class="eyebrow">Continuity</span><h2>Shift snapshots</h2></div>
         </div>
-
         <div id="shift-list"></div>
       </aside>
     </section>
   </main>
 
-  <div
-    id="drawer-backdrop"
-    class="drawer-backdrop hidden"
-  ></div>
-
-  <aside
-    id="drawer"
-    class="drawer hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Operational issue detail"
-  >
-    <button
-      id="drawer-close"
-      class="drawer-close"
-      aria-label="Close issue detail"
-    >
-      ×
-    </button>
-
+  <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>
+  <aside id="drawer" class="drawer hidden" role="dialog" aria-modal="true" aria-label="Operational issue detail">
+    <button id="drawer-close" class="drawer-close" aria-label="Close issue detail">×</button>
     <div id="drawer-content"></div>
   </aside>
 
