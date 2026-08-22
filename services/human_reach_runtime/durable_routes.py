@@ -7,9 +7,56 @@ import requests
 import main as human_reach_runtime
 
 
-
 def _configured_display_names() -> set[str]:
     return set(human_reach_runtime._routes().values())
+
+
+def _display_name_for_space(
+    *,
+    space_name: str,
+    inline_display_name: Any,
+) -> str | None:
+    configured = _configured_display_names()
+
+    if isinstance(inline_display_name, str):
+        cleaned = inline_display_name.strip()
+        if cleaned in configured:
+            return cleaned
+
+    response = requests.get(
+        f"{human_reach_runtime.CHAT_API}/{space_name}",
+        headers=human_reach_runtime._chat_headers(),
+        timeout=human_reach_runtime.TIMEOUT_SECONDS,
+    )
+    payload = human_reach_runtime._json_response(response)
+
+    returned_name = payload.get("name")
+    display_name = payload.get("displayName")
+
+    if returned_name != space_name:
+        raise RuntimeError(
+            "Google Chat returned metadata for an unexpected space"
+        )
+
+    if not isinstance(display_name, str) or not display_name.strip():
+        human_reach_runtime.app.logger.warning(
+            "Ignoring Google Chat route without a usable display name: %s",
+            space_name,
+        )
+        return None
+
+    cleaned = display_name.strip()
+
+    if cleaned not in configured:
+        human_reach_runtime.app.logger.warning(
+            "Ignoring Google Chat route outside configured allowlist: "
+            "space=%s display_name=%r",
+            space_name,
+            cleaned,
+        )
+        return None
+
+    return cleaned
 
 
 def _event_space(event: dict[str, Any]) -> tuple[str, str] | None:
@@ -19,19 +66,19 @@ def _event_space(event: dict[str, Any]) -> tuple[str, str] | None:
         return None
 
     space_name = space.get("name")
-    display_name = space.get("displayName")
 
     if (
         not isinstance(space_name, str)
         or not space_name.startswith("spaces/")
-        or not isinstance(display_name, str)
-        or not display_name.strip()
     ):
         return None
 
-    display_name = display_name.strip()
+    display_name = _display_name_for_space(
+        space_name=space_name,
+        inline_display_name=space.get("displayName"),
+    )
 
-    if display_name not in _configured_display_names():
+    if display_name is None:
         return None
 
     return space_name, display_name
