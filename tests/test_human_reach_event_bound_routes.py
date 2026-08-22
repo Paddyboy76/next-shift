@@ -85,6 +85,17 @@ class HumanReachEventBoundRouteTests(unittest.TestCase):
         self.assertIn("MESSAGE", entrypoint)
         self.assertIn("REMOVED_FROM_SPACE", entrypoint)
 
+    def test_missing_inline_display_name_uses_exact_space_get(self) -> None:
+        durable = (
+            RUNTIME_DIR / "durable_routes.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("requests.get(", durable)
+        self.assertIn("human_reach_runtime.CHAT_API", durable)
+        self.assertIn("human_reach_runtime._chat_headers()", durable)
+        self.assertIn("unexpected space", durable)
+        self.assertIn("outside configured allowlist", durable)
+
     def test_delivery_and_readiness_use_state_authority_routes(self) -> None:
         durable = (
             RUNTIME_DIR / "durable_routes.py"
