@@ -82,7 +82,9 @@ test -f "${STATE_DIR}/human_reach_transition.py"
 test -f "${HUMAN_REACH_DIR}/main.py"
 test -f "${HUMAN_REACH_DIR}/entrypoint.py"
 test -f "${HUMAN_REACH_DIR}/auth.py"
+test -f "${HUMAN_REACH_DIR}/rich_card.py"
 test -f "${OPERATIONS_DIR}/data.py"
+test -f "${OPERATIONS_DIR}/static/deeplink.js"
 echo "SOURCE_OK=1"
 
 
@@ -202,6 +204,18 @@ echo "HUMAN_REACH_TO_STATE_AUTHORITY_INVOKER_OK=1"
 
 
 echo
+echo "===== RESOLVE OPERATIONS CONTROL URL ====="
+OPERATIONS_URL="$(
+    gcloud run services describe "${OPERATIONS_SERVICE}" \
+        --project="${PROJECT_ID}" \
+        --region="${REGION}" \
+        --format='value(status.url)'
+)"
+
+echo "OPERATIONS_UI_URL=${OPERATIONS_URL}"
+
+
+echo
 echo "===== DEPLOY DRS-SAFE HUMAN REACH ====="
 PREVIOUS_HUMAN_REACH_URL="$(
     gcloud run services describe "${HUMAN_REACH_SERVICE}" \
@@ -223,7 +237,7 @@ gcloud run deploy "${HUMAN_REACH_SERVICE}" \
     --max-instances=2 \
     --memory=512Mi \
     --cpu=1 \
-    --set-env-vars="^~^STATE_AUTHORITY_URL=${STATE_URL}~HUMAN_REACH_ROUTES_JSON=${ROUTES_JSON}~HUMAN_REACH_AUDIENCE=${BOOTSTRAP_AUDIENCE}~PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}" \
+    --set-env-vars="^~^STATE_AUTHORITY_URL=${STATE_URL}~HUMAN_REACH_ROUTES_JSON=${ROUTES_JSON}~HUMAN_REACH_AUDIENCE=${BOOTSTRAP_AUDIENCE}~PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}~OPERATIONS_UI_URL=${OPERATIONS_URL}" \
     --quiet
 
 HUMAN_REACH_URL="$(
@@ -242,11 +256,12 @@ gcloud run services update "${HUMAN_REACH_SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
     --no-invoker-iam-check \
-    --update-env-vars="HUMAN_REACH_AUDIENCE=${HUMAN_REACH_URL},PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}" \
+    --update-env-vars="HUMAN_REACH_AUDIENCE=${HUMAN_REACH_URL},PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA},OPERATIONS_UI_URL=${OPERATIONS_URL}" \
     --quiet >/dev/null
 
 echo "HUMAN_REACH_APP_LEVEL_OIDC_OK=1"
 echo "HUMAN_REACH_DRS_SAFE_INGRESS_OK=1"
+echo "HUMAN_REACH_OPERATIONS_DEEPLINK_OK=1"
 
 # Permit only the Pub/Sub service agent to mint the OIDC token for this push
 # identity. The Human Reach application verifies that exact service-account
@@ -337,6 +352,7 @@ echo "CHAT_FUNCTIONALITY=Join spaces and group conversations"
 echo "CHAT_ROUTE_FACILITIES_OPS=Next Shift - Facilities Ops"
 echo "CHAT_ROUTE_PATIENT_FLOW=Next Shift - Patient Flow"
 echo "HUMAN_REACH_ROUTES_JSON=${ROUTES_JSON}"
+echo "OPERATIONS_UI_URL=${OPERATIONS_URL}"
 
 
 echo
