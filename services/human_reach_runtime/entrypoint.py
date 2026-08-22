@@ -70,6 +70,9 @@ def readiness():
         for owner in routes:
             _resolve_space(owner)
     except Exception as exc:
+        app.logger.exception(
+            "Human Reach readiness failed while resolving Google Chat routes"
+        )
         return (
             jsonify(
                 {
