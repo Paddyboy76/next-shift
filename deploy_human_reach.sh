@@ -20,7 +20,6 @@ EVIDENCE_SERVICE="next-shift-trusted-evidence"
 VERIFIER_SERVICE="next-shift-verifier"
 BUILDER_SA="ns-cloud-run-builder@${PROJECT_ID}.iam.gserviceaccount.com"
 PUBSUB_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"
-CHAT_INVOKER="chat@system.gserviceaccount.com"
 
 HUMAN_REACH_TOPIC="next-shift-human-reach-requested"
 HUMAN_REACH_SUBSCRIPTION="next-shift-human-reach-push"
@@ -82,6 +81,7 @@ test -f "${STATE_DIR}/human_reach_dispatch.py"
 test -f "${STATE_DIR}/human_reach_transition.py"
 test -f "${HUMAN_REACH_DIR}/main.py"
 test -f "${HUMAN_REACH_DIR}/entrypoint.py"
+test -f "${HUMAN_REACH_DIR}/auth.py"
 test -f "${OPERATIONS_DIR}/data.py"
 echo "SOURCE_OK=1"
 
@@ -202,19 +202,28 @@ echo "HUMAN_REACH_TO_STATE_AUTHORITY_INVOKER_OK=1"
 
 
 echo
-echo "===== DEPLOY HUMAN REACH ====="
+echo "===== DEPLOY DRS-SAFE HUMAN REACH ====="
+PREVIOUS_HUMAN_REACH_URL="$(
+    gcloud run services describe "${HUMAN_REACH_SERVICE}" \
+        --project="${PROJECT_ID}" \
+        --region="${REGION}" \
+        --format='value(status.url)' \
+        2>/dev/null || true
+)"
+BOOTSTRAP_AUDIENCE="${PREVIOUS_HUMAN_REACH_URL:-UNCONFIGURED}"
+
 gcloud run deploy "${HUMAN_REACH_SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
     --source="${HUMAN_REACH_DIR}" \
     --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILDER_SA}" \
     --service-account="${HUMAN_REACH_SA}" \
-    --no-allow-unauthenticated \
+    --no-invoker-iam-check \
     --min-instances=0 \
     --max-instances=2 \
     --memory=512Mi \
     --cpu=1 \
-    --set-env-vars="^~^STATE_AUTHORITY_URL=${STATE_URL}~HUMAN_REACH_ROUTES_JSON=${ROUTES_JSON}" \
+    --set-env-vars="^~^STATE_AUTHORITY_URL=${STATE_URL}~HUMAN_REACH_ROUTES_JSON=${ROUTES_JSON}~HUMAN_REACH_AUDIENCE=${BOOTSTRAP_AUDIENCE}~PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}" \
     --quiet
 
 HUMAN_REACH_URL="$(
@@ -226,29 +235,22 @@ HUMAN_REACH_URL="$(
 
 echo "HUMAN_REACH_URL=${HUMAN_REACH_URL}"
 
-
-echo
-echo "===== AUTHORIZE PUBSUB + GOOGLE CHAT INVOCATION ====="
-gcloud run services add-iam-policy-binding \
-    "${HUMAN_REACH_SERVICE}" \
+# The Cloud Run URL is stable after service creation. Pin the exact audience
+# into the runtime after first deployment so both Chat and Pub/Sub OIDC tokens
+# are verified against the same endpoint configured in Google Chat.
+gcloud run services update "${HUMAN_REACH_SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
-    --member="serviceAccount:${PUSH_SA}" \
-    --role="roles/run.invoker" \
+    --no-invoker-iam-check \
+    --update-env-vars="HUMAN_REACH_AUDIENCE=${HUMAN_REACH_URL},PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}" \
     --quiet >/dev/null
 
-gcloud run services add-iam-policy-binding \
-    "${HUMAN_REACH_SERVICE}" \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --member="serviceAccount:${CHAT_INVOKER}" \
-    --role="roles/run.invoker" \
-    --quiet >/dev/null
-
-echo "HUMAN_REACH_PRIVATE_INVOKERS_OK=1"
+echo "HUMAN_REACH_APP_LEVEL_OIDC_OK=1"
+echo "HUMAN_REACH_DRS_SAFE_INGRESS_OK=1"
 
 # Permit only the Pub/Sub service agent to mint the OIDC token for this push
-# identity. This is narrower than granting token creation project-wide.
+# identity. The Human Reach application verifies that exact service-account
+# email and the exact Human Reach audience on every /pubsub request.
 gcloud iam service-accounts add-iam-policy-binding \
     "${PUSH_SA}" \
     --project="${PROJECT_ID}" \
@@ -319,7 +321,7 @@ echo "===== VERIFY HUMAN REACH DEPLOYMENT ====="
 gcloud run services describe "${HUMAN_REACH_SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
-    --format='table(metadata.name,status.latestReadyRevisionName,spec.template.spec.serviceAccountName,status.url)'
+    --format='yaml(metadata.name,status.latestReadyRevisionName,status.url,spec.template.spec.serviceAccountName,spec.template.spec.containers[0].env,metadata.annotations)'
 
 gcloud pubsub subscriptions describe "${HUMAN_REACH_SUBSCRIPTION}" \
     --project="${PROJECT_ID}" \
@@ -327,7 +329,7 @@ gcloud pubsub subscriptions describe "${HUMAN_REACH_SUBSCRIPTION}" \
 
 
 echo
-echo "===== GOOGLE CHAT CONFIGURATION REQUIRED ONCE ====="
+echo "===== GOOGLE CHAT CONFIGURATION ====="
 echo "CHAT_APP_NAME=Next Shift Human Reach"
 echo "CHAT_HTTP_ENDPOINT=${HUMAN_REACH_URL}"
 echo "CHAT_AUTHENTICATION_AUDIENCE=HTTP endpoint URL"
