@@ -1,25 +1,37 @@
-const states = [
+const activeStates = [
+  "HUMAN_REVIEW",
+  "BLOCKED",
   "ACTION_PENDING",
   "VERIFYING",
-  "BLOCKED",
-  "HUMAN_REVIEW",
   "ASSIGNED",
   "TRIAGED",
   "RECEIVED",
-  "CLOSED",
-  "FAILED",
 ];
+
+const terminalStates = new Set(["CLOSED", "FAILED"]);
+
+const attentionRank = {
+  HUMAN_REVIEW: 0,
+  BLOCKED: 1,
+  FAILED: 2,
+  ACTION_PENDING: 3,
+  VERIFYING: 4,
+  ASSIGNED: 5,
+  TRIAGED: 6,
+  RECEIVED: 7,
+  CLOSED: 8,
+};
 
 const nextActions = {
   RECEIVED: "Await specialist triage",
   TRIAGED: "Await specialist assignment",
   ASSIGNED: "Begin operational action",
   ACTION_PENDING: "Await trusted evidence",
-  VERIFYING: "Await independent verification",
+  VERIFYING: "Independent verification in progress",
   BLOCKED: "Resolve blocking dependency",
-  HUMAN_REVIEW: "Await authorized human decision",
-  CLOSED: "Verified complete",
-  FAILED: "Review failure",
+  HUMAN_REVIEW: "Authorized human decision required",
+  CLOSED: "Verified complete — no action required",
+  FAILED: "Review workflow failure",
 };
 
 const humanReachLabels = {
@@ -28,20 +40,30 @@ const humanReachLabels = {
   ACKNOWLEDGED: "Acknowledged by frontline worker",
   BLOCKED: "Frontline worker reported blocked",
   COMPLETION_CLAIMED: "Human completion claimed — evidence still required",
+  CANCELLED: "Frontline delivery no longer actionable",
 };
 
-const terminalStates = new Set(["CLOSED", "FAILED"]);
 const board = document.querySelector("#board");
+const inactiveBoard = document.querySelector("#inactive-board");
+const inactiveCount = document.querySelector("#inactive-count");
 const latestWork = document.querySelector("#latest-work");
 const drawer = document.querySelector("#drawer");
 const backdrop = document.querySelector("#drawer-backdrop");
 const drawerContent = document.querySelector("#drawer-content");
+const refreshAlert = document.querySelector("#refresh-alert");
+let drawerOrigin = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value)
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function shortTime(value) {
@@ -54,6 +76,37 @@ function issueTime(issue) {
   const raw = issue.updated_at || issue.created_at || "";
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function stateTime(issue) {
+  const raw = issue.last_transition_at || issue.updated_at || issue.created_at || "";
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function formatDuration(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
+  const minutes = Math.floor(milliseconds / 60000);
+  if (minutes < 1) return "<1m";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours < 24) return remainder ? `${hours}h ${String(remainder).padStart(2, "0")}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const dayHours = hours % 24;
+  return dayHours ? `${days}d ${dayHours}h` : `${days}d`;
+}
+
+function timeInState(issue) {
+  const timestamp = stateTime(issue);
+  return timestamp ? formatDuration(Date.now() - timestamp) : "—";
+}
+
+function compareAttention(a, b) {
+  const aState = String(a.state || "UNKNOWN");
+  const bState = String(b.state || "UNKNOWN");
+  const rankDifference = (attentionRank[aState] ?? 99) - (attentionRank[bState] ?? 99);
+  return rankDifference || issueTime(b) - issueTime(a);
 }
 
 async function json(url, options = {}) {
@@ -79,23 +132,54 @@ async function loadSummary() {
   document.querySelector("#metric-review").textContent = summary.human_review;
 }
 
+function claimMarker(issue) {
+  if (String(issue.human_reach_status || "") !== "COMPLETION_CLAIMED") return "";
+  return `<div class="claim-marker" aria-label="Human completion claimed but not independently verified">
+    <span>CLAIMED</span>
+    <strong>UNVERIFIED</strong>
+  </div>`;
+}
+
 function issueCard(issue, options = {}) {
   const compact = options.compact === true;
+  const inactive = options.inactive === true;
   const state = String(issue.state || "UNKNOWN");
-  return `<article class="issue-card${compact ? " issue-card-compact" : ""}" data-issue="${escapeHtml(issue.id)}">
+  const absoluteTime = shortTime(issue.last_transition_at || issue.updated_at || issue.created_at);
+  const classes = [
+    "issue-card",
+    compact ? "issue-card-compact" : "",
+    inactive ? "issue-card-inactive" : "",
+    issue.human_reach_status === "COMPLETION_CLAIMED" ? "issue-card-claimed" : "",
+  ].filter(Boolean).join(" ");
+
+  return `<article
+    class="${classes}"
+    data-issue="${escapeAttr(issue.id)}"
+    role="button"
+    tabindex="0"
+    aria-label="Open ${escapeAttr(issue.title || issue.id)}"
+  >
     <div class="issue-card-topline">
       <span class="owner">${escapeHtml(issue.owner)}</span>
-      <span class="state-pill state-${escapeHtml(state.toLowerCase())}">${escapeHtml(state.replaceAll("_", " "))}</span>
+      <span class="state-pill state-${escapeAttr(state.toLowerCase())}">${escapeHtml(state.replaceAll("_", " "))}</span>
     </div>
+    ${claimMarker(issue)}
     <h3>${escapeHtml(issue.title || issue.id)}</h3>
     <div class="next-action">${escapeHtml(nextActions[state] || "Review state")}</div>
-    <div class="card-time">${escapeHtml(shortTime(issue.updated_at || issue.created_at))}</div>
+    <div class="card-time" title="${escapeAttr(absoluteTime)}">In state ${escapeHtml(timeInState(issue))}</div>
   </article>`;
 }
 
 function bindIssueCards() {
   document.querySelectorAll(".issue-card").forEach((card) => {
-    card.addEventListener("click", () => openIssue(card.dataset.issue));
+    const activate = () => openIssue(card.dataset.issue, card);
+    card.addEventListener("click", activate);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        activate();
+      }
+    });
   });
 }
 
@@ -103,24 +187,38 @@ async function loadBoard() {
   const payload = await json("/api/issues");
   const issues = Array.isArray(payload.issues) ? payload.issues : [];
   const newest = issues.slice().sort((a, b) => issueTime(b) - issueTime(a));
-  const active = newest.filter((issue) => !terminalStates.has(String(issue.state)));
+  const active = newest
+    .filter((issue) => !terminalStates.has(String(issue.state)))
+    .sort(compareAttention);
+  const inactive = newest.filter((issue) => terminalStates.has(String(issue.state)));
 
   latestWork.innerHTML = active.length
     ? active.slice(0, 8).map((issue) => issueCard(issue, { compact: true })).join("")
     : '<div class="empty focus-empty">No active operational work.</div>';
 
-  board.innerHTML = states.map((state) => {
-    const matching = newest.filter((issue) => issue.state === state);
-    return `<section class="lane lane-${state.toLowerCase()}">
+  const populatedLanes = activeStates
+    .map((state) => ({
+      state,
+      matching: newest.filter((issue) => issue.state === state),
+    }))
+    .filter(({ matching }) => matching.length > 0);
+
+  board.innerHTML = populatedLanes.length
+    ? populatedLanes.map(({ state, matching }) => `<section class="lane lane-${state.toLowerCase()}">
       <div class="lane-title">
         <span>${state.replaceAll("_", " ")}</span>
         <span class="lane-count">${matching.length}</span>
       </div>
       <div class="lane-cards">
-        ${matching.length ? matching.map((issue) => issueCard(issue)).join("") : '<div class="empty">No work</div>'}
+        ${matching.map((issue) => issueCard(issue)).join("")}
       </div>
-    </section>`;
-  }).join("");
+    </section>`).join("")
+    : '<div class="empty focus-empty">No open workflow lanes.</div>';
+
+  inactiveCount.textContent = `${inactive.length} item${inactive.length === 1 ? "" : "s"}`;
+  inactiveBoard.innerHTML = inactive.length
+    ? inactive.map((issue) => issueCard(issue, { inactive: true })).join("")
+    : '<div class="empty">No closed or failed work yet.</div>';
 
   bindIssueCards();
   document.querySelector("#last-refresh").textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -144,7 +242,8 @@ function actionControls(issue) {
       <span class="eyebrow">Next governed action</span>
       <h3>Record trusted evidence</h3>
       <div class="timeline-item">Synthetic acceptance control. Evidence is recorded through the dedicated trusted-evidence identity; it cannot close the issue.</div>
-      <button class="primary-action-button" data-issue-action="complete" data-issue-id="${escapeHtml(issue.id)}">Record synthetic trusted evidence</button>
+      <button class="primary-action-button" data-issue-action="complete" data-issue-id="${escapeAttr(issue.id)}">Record synthetic trusted evidence</button>
+      <div class="action-error hidden" role="alert"></div>
     </div>`;
   }
   if (issue.state === "VERIFYING") {
@@ -152,7 +251,8 @@ function actionControls(issue) {
       <span class="eyebrow">Next governed action</span>
       <h3>Independent verification</h3>
       <div class="timeline-item">The verifier independently reads the trusted evidence and requests closure through State Authority.</div>
-      <button class="primary-action-button" data-issue-action="verify" data-issue-id="${escapeHtml(issue.id)}">Run independent verifier</button>
+      <button class="primary-action-button" data-issue-action="verify" data-issue-id="${escapeAttr(issue.id)}">Run independent verifier</button>
+      <div class="action-error hidden" role="alert"></div>
     </div>`;
   }
   return "";
@@ -172,7 +272,7 @@ function humanReachSection(delivery) {
     : [];
 
   const completionWarning = status === "COMPLETION_CLAIMED"
-    ? `<div class="timeline-item"><strong>Not verified complete</strong><br>A human completion claim is recorded, but trusted evidence and independent verification are still required before this issue can close.</div>`
+    ? `<div class="claim-callout"><strong>Claimed · unverified</strong><br>A frontline worker says the task is complete. That claim is not operational truth; trusted evidence and independent verification are still required.</div>`
     : "";
 
   return `<div class="detail-section">
@@ -196,6 +296,11 @@ function humanReachSection(delivery) {
 
 async function runIssueAction(issueId, action, button) {
   const original = button.textContent;
+  const errorBox = button.parentElement.querySelector(".action-error");
+  if (errorBox) {
+    errorBox.textContent = "";
+    errorBox.classList.add("hidden");
+  }
   button.disabled = true;
   button.textContent = action === "complete" ? "Recording trusted evidence…" : "Running verifier…";
   try {
@@ -206,25 +311,35 @@ async function runIssueAction(issueId, action, button) {
   } catch (error) {
     button.disabled = false;
     button.textContent = original;
-    window.alert(error.message);
+    if (errorBox) {
+      errorBox.textContent = error.message;
+      errorBox.classList.remove("hidden");
+    }
   }
 }
 
-async function openIssue(issueId) {
+async function openIssue(issueId, origin = null) {
   const payload = await json(`/api/issues/${issueId}`);
   const issue = payload.issue;
   const evidence = payload.evidence || [];
   const transitions = payload.transitions || [];
   const humanReach = payload.human_reach || null;
 
+  if (origin instanceof HTMLElement) drawerOrigin = origin;
+
   drawerContent.innerHTML = `
-    <span class="eyebrow">${escapeHtml(issue.owner)}</span>
-    <h2>${escapeHtml(issue.title || issue.id)}</h2>
+    <div class="drawer-header">
+      <span class="eyebrow">${escapeHtml(issue.owner)}</span>
+      <h2>${escapeHtml(issue.title || issue.id)}</h2>
+    </div>
     <div class="detail-section current-state-section">
       <h3>Current state</h3>
       <div class="timeline-item current-state-card">
-        <strong>${escapeHtml(issue.state)}</strong><br>
-        ${escapeHtml(nextActions[issue.state] || "")}
+        <div class="detail-state-row">
+          <span class="state-pill state-${escapeAttr(String(issue.state || "unknown").toLowerCase())}">${escapeHtml(String(issue.state || "UNKNOWN").replaceAll("_", " "))}</span>
+          <span title="${escapeAttr(shortTime(issue.last_transition_at || issue.updated_at || issue.created_at))}">In state ${escapeHtml(timeInState(issue))}</span>
+        </div>
+        <div class="detail-next-action">${escapeHtml(nextActions[issue.state] || "")}</div>
       </div>
     </div>
     ${actionControls(issue)}
@@ -250,15 +365,37 @@ async function openIssue(issueId) {
   drawer.scrollTop = 0;
   drawer.classList.remove("hidden");
   backdrop.classList.remove("hidden");
+  document.querySelector("#drawer-close").focus();
 }
 
 function closeDrawer() {
   drawer.classList.add("hidden");
   backdrop.classList.add("hidden");
+  if (drawerOrigin && document.contains(drawerOrigin)) drawerOrigin.focus();
+}
+
+function trapDrawerFocus(event) {
+  if (event.key !== "Tab" || drawer.classList.contains("hidden")) return;
+  const focusable = Array.from(drawer.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])'))
+    .filter((element) => !element.disabled && element.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 document.querySelector("#drawer-close").addEventListener("click", closeDrawer);
 backdrop.addEventListener("click", closeDrawer);
+drawer.addEventListener("keydown", trapDrawerFocus);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !drawer.classList.contains("hidden")) closeDrawer();
+});
 
 document.querySelector("#submit-handover").addEventListener("click", async () => {
   const button = document.querySelector("#submit-handover");
@@ -290,8 +427,15 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
 async function refresh() {
   try {
     await Promise.all([loadSummary(), loadBoard(), loadShifts()]);
+    refreshAlert.textContent = "";
+    refreshAlert.classList.add("hidden");
+    document.body.classList.remove("data-stale");
   } catch (error) {
-    document.querySelector("#last-refresh").textContent = `Refresh failed: ${error.message}`;
+    const message = `Live data refresh failed: ${error.message}. Display may be stale.`;
+    document.querySelector("#last-refresh").textContent = "Refresh failed";
+    refreshAlert.textContent = message;
+    refreshAlert.classList.remove("hidden");
+    document.body.classList.add("data-stale");
   }
 }
 

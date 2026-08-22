@@ -78,11 +78,31 @@ def _dimension_key(
     return normalized
 
 
+def _human_reach_by_issue(
+    db: firestore.Client,
+) -> dict[str, dict[str, Any]]:
+    deliveries: dict[str, dict[str, Any]] = {}
+
+    for snapshot in db.collection(HUMAN_REACH).stream():
+        delivery = snapshot.to_dict() or {}
+        issue_id = delivery.get("issue_id")
+
+        if not isinstance(issue_id, str) or not issue_id:
+            continue
+
+        deliveries[issue_id] = _serialize(delivery)
+
+    return deliveries
+
+
 def list_issues(
     limit: int = 120,
+    *,
+    include_human_reach: bool = False,
 ) -> list[dict[str, Any]]:
+    db = _db()
     snapshots = (
-        _db()
+        db
         .collection(ISSUES)
         .stream()
     )
@@ -91,6 +111,25 @@ def list_issues(
         _serialize(snapshot.to_dict())
         for snapshot in snapshots
     ]
+
+    if include_human_reach:
+        deliveries = _human_reach_by_issue(db)
+
+        for issue in issues:
+            issue_id = issue.get("id")
+            delivery = (
+                deliveries.get(issue_id)
+                if isinstance(issue_id, str)
+                else None
+            )
+
+            if delivery is not None:
+                issue["human_reach_status"] = delivery.get(
+                    "delivery_status"
+                )
+                issue["human_reach_destination"] = delivery.get(
+                    "destination_display_name"
+                )
 
     issues.sort(
         key=_time_key,

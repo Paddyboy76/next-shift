@@ -56,7 +56,9 @@ def summary():
 def issues():
     return jsonify(
         {
-            "issues": list_issues(),
+            "issues": list_issues(
+                include_human_reach=True
+            ),
         }
     )
 
