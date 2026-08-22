@@ -1,4 +1,8 @@
 import unittest
+from pathlib import Path
+
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
 
 from services.operations_ui.trace import build_lifecycle_trace
 
@@ -90,6 +94,47 @@ class LifecycleTraceTests(unittest.TestCase):
         self.assertEqual(identifiers["handover_event_id"], "event-1")
         self.assertEqual(identifiers["human_reach_event_id"], "hr-event-1")
         self.assertEqual(identifiers["evidence_id"], "evidence-1")
+
+    def test_trace_template_renders_items_list(self) -> None:
+        template_dir = (
+            Path(__file__).resolve().parents[1]
+            / "services"
+            / "operations_ui"
+            / "templates"
+        )
+        environment = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            autoescape=True,
+        )
+        template = environment.get_template("trace.html")
+        rendered = template.render(
+            trace={
+                "issue_id": "issue-1",
+                "owner": "PatientTransport",
+                "work_order": "TRN-123",
+                "current_state": "CLOSED",
+                "verification_status": "VERIFIED",
+                "items": [
+                    {
+                        "stage": "VERIFIER",
+                        "title": "Independent verification",
+                        "status": "CLOSED",
+                        "at": "2026-08-22T09:03:00+00:00",
+                        "authority": "State Authority",
+                        "actor": "ns-verifier@example",
+                        "detail": "Verified evidence accepted.",
+                        "identifiers": {
+                            "evidence_id": "evidence-1",
+                        },
+                    }
+                ],
+            },
+            error=None,
+        )
+
+        self.assertIn("Governed lifecycle trace", rendered)
+        self.assertIn("Independent verification", rendered)
+        self.assertIn("evidence_id = evidence-1", rendered)
 
 
 if __name__ == "__main__":
