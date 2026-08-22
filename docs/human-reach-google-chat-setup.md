@@ -8,7 +8,7 @@ Google Cloud project:
 
 `next-shift-506004`
 
-The deployment script prints the private Cloud Run service URL as:
+The deployment script prints the Human Reach Cloud Run service URL as:
 
 `HUMAN_REACH_URL=...`
 
@@ -26,13 +26,27 @@ In Google Cloud Console:
 6. Avatar: use a non-proprietary/synthetic Next Shift icon URL. A temporary neutral public icon is acceptable for acceptance testing.
 7. Under **Functionality**, enable **Join spaces and group conversations**.
 8. Under **Connection settings**, choose **HTTP endpoint URL**.
-9. Under **Triggers**, choose **Use a common HTTP endpoint URL for all triggers**.
-10. Paste the exact root `HUMAN_REACH_URL` printed by the deployment script. Do not append `/chat` or `/pubsub`.
-11. Under **Visibility**, choose **Make this Chat app available to specific people and groups in your domain** and add the Workspace account used for acceptance testing. Add another Workspace-domain tester if desired.
-12. Enable **Log errors to Logging**.
-13. Save.
+9. Set **Authentication Audience** to **HTTP endpoint URL**.
+10. Under **Triggers**, choose **Use a common HTTP endpoint URL for all triggers**.
+11. Paste the exact root `HUMAN_REACH_URL` printed by the deployment script. Do not append `/chat` or `/pubsub`.
+12. Under **Visibility**, choose **Make this Chat app available to specific people and groups in your domain** and add the Workspace account used for acceptance testing. Add another Workspace-domain tester if desired.
+13. Leave **Commands** and **Link previews** empty for this acceptance slice.
+14. Enable **Log errors to Logging**.
+15. Save.
 
-The Cloud Run service remains private. `deploy_human_reach.sh` grants `roles/run.invoker` only to the dedicated Pub/Sub push identity and `chat@system.gserviceaccount.com` for Chat interaction events.
+The Hallermann Consulting organization enforces domain-restricted sharing, which can prevent granting `roles/run.invoker` to Google's `chat@system.gserviceaccount.com`. Human Reach therefore uses the documented DRS-safe Cloud Run pattern: the Cloud Run invoker IAM check is disabled for this service only, while the application itself cryptographically verifies every privileged ingress request.
+
+For Chat interaction requests, Human Reach requires a Google-signed OIDC ID token with:
+
+- audience equal to the exact `HUMAN_REACH_URL`
+- verified email `chat@system.gserviceaccount.com`
+
+For Pub/Sub delivery requests, Human Reach requires a Google-signed OIDC ID token with:
+
+- audience equal to the exact `HUMAN_REACH_URL`
+- verified email equal to the dedicated `ns-push-human-reach@next-shift-506004.iam.gserviceaccount.com` identity
+
+Requests that do not satisfy the appropriate identity contract fail with `401`. Human Reach still has no direct Firestore role and cannot close operational issues.
 
 ## 3. Create the two synthetic routing spaces
 
