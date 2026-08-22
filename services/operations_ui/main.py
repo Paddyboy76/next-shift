@@ -21,6 +21,7 @@ from runtime import submit_handover
 from state_authority import (
     persist_handover_proposals,
 )
+from trace import build_lifecycle_trace
 
 
 app = Flask(__name__)
@@ -30,6 +31,31 @@ app = Flask(__name__)
 def index():
     return render_template(
         "index.html"
+    )
+
+
+@app.get("/trace/<issue_id>")
+def lifecycle_trace_page(
+    issue_id: str,
+):
+    try:
+        bundle = get_issue_bundle(
+            issue_id
+        )
+    except KeyError:
+        return (
+            render_template(
+                "trace.html",
+                trace=None,
+                error="Issue not found",
+            ),
+            404,
+        )
+
+    return render_template(
+        "trace.html",
+        trace=build_lifecycle_trace(bundle),
+        error=None,
     )
 
 
@@ -80,6 +106,27 @@ def issue_detail(
         )
 
     return jsonify(result)
+
+
+@app.get("/api/issues/<issue_id>/trace")
+def issue_trace(
+    issue_id: str,
+):
+    try:
+        bundle = get_issue_bundle(
+            issue_id
+        )
+    except KeyError:
+        return (
+            jsonify(
+                {"error": "not_found"}
+            ),
+            404,
+        )
+
+    return jsonify(
+        build_lifecycle_trace(bundle)
+    )
 
 
 @app.post("/api/issues/<issue_id>/complete")
