@@ -277,16 +277,19 @@ class HumanReachTests(unittest.TestCase):
         self.assertIn('"delivery_status": "CANCELLED"', freshness)
         self.assertIn('current_state == "ACTION_PENDING"', freshness)
 
-    def test_deployment_keeps_human_reach_private_and_data_less(self) -> None:
+    def test_deployment_keeps_human_reach_guarded_and_data_less(self) -> None:
         source = DEPLOY.read_text(encoding="utf-8")
 
-        self.assertIn("--no-allow-unauthenticated", source)
-        self.assertIn("chat@system.gserviceaccount.com", source)
+        self.assertIn("--no-invoker-iam-check", source)
+        self.assertIn("HUMAN_REACH_AUDIENCE=${HUMAN_REACH_URL}", source)
+        self.assertIn("PUBSUB_PUSH_SERVICE_ACCOUNT=${PUSH_SA}", source)
+        self.assertIn("HUMAN_REACH_APP_LEVEL_OIDC_OK=1", source)
         self.assertIn("ns-push-human-reach", source)
         self.assertIn("roles/iam.serviceAccountTokenCreator", source)
         self.assertIn("HUMAN_REACH_NO_DIRECT_DATA_ROLES=1", source)
         self.assertIn("next-shift-human-reach-requested", source)
         self.assertIn("next-shift-human-reach-push", source)
+        self.assertNotIn("chat@system.gserviceaccount.com", source)
 
 
 if __name__ == "__main__":
