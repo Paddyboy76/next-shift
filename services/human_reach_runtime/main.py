@@ -225,7 +225,7 @@ def _list_named_spaces() -> list[dict[str, Any]]:
     while True:
         params: dict[str, Any] = {
             "pageSize": 100,
-            "filter": 'space_type = "SPACE"',
+            "filter": 'spaceType = "SPACE"',
         }
 
         if page_token:
