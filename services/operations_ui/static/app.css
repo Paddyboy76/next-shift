@@ -97,10 +97,27 @@ h3 {
   background: #0c1b25;
 }
 
+.refresh-alert {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  padding: 10px 28px;
+  border-bottom: 1px solid #ff4d4d;
+  background: #38191d;
+  color: #ffd7d7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.data-stale main {
+  opacity: 0.62;
+}
+
 main {
   width: min(1540px, 100%);
   margin: 0 auto;
   padding: 20px 28px 38px;
+  transition: opacity 0.15s ease;
 }
 
 .hero-grid {
@@ -164,7 +181,11 @@ textarea {
   line-height: 1.5;
 }
 
-textarea:focus {
+textarea:focus,
+button:focus-visible,
+.issue-card:focus-visible,
+summary:focus-visible {
+  outline: none;
   border-color: #42cabb;
   box-shadow:
     0 0 0 3px
@@ -214,10 +235,24 @@ button:disabled {
   border: 1px solid #1b3240;
 }
 
+.metrics .metric-review {
+  border-color: #745c39;
+  background: #241d15;
+}
+
+.metrics .metric-verifying {
+  border-color: #39746f;
+}
+
+.metrics .metric-closed {
+  opacity: 0.7;
+}
+
 .metrics strong {
   display: block;
   font-size: 27px;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .metrics span {
@@ -245,7 +280,8 @@ button:disabled {
   margin-top: 15px;
 }
 
-.workflow-section {
+.workflow-section,
+.inactive-section {
   margin-top: 22px;
 }
 
@@ -293,6 +329,7 @@ button:disabled {
   border-radius: 999px;
   background: #0c202c;
   color: #d5e5eb;
+  font-variant-numeric: tabular-nums;
 }
 
 .lane-cards {
@@ -309,7 +346,8 @@ button:disabled {
   transition: 0.15s ease;
 }
 
-.issue-card:hover {
+.issue-card:hover,
+.issue-card:focus-visible {
   transform: translateY(-1px);
   border-color: #3e6b7d;
 }
@@ -322,6 +360,19 @@ button:disabled {
       rgba(16, 41, 53, 0.98),
       rgba(10, 27, 37, 0.98)
     );
+}
+
+.issue-card-inactive {
+  opacity: 0.62;
+}
+
+.issue-card-inactive:hover,
+.issue-card-inactive:focus-visible {
+  opacity: 0.9;
+}
+
+.issue-card-claimed {
+  border-color: #58bcae;
 }
 
 .issue-card h3 {
@@ -354,21 +405,73 @@ button:disabled {
   font-weight: 800;
 }
 
-.state-action_pending,
-.state-verifying {
-  border-color: #39746f;
-  color: #7ce1d4;
+.state-action_pending {
+  border-color: #42cabb;
+  background: rgba(66, 202, 187, 0.14);
+  color: #8ee9df;
 }
 
-.state-blocked,
+.state-verifying {
+  border-color: #42cabb;
+  border-style: dashed;
+  background: transparent;
+  color: #8ee9df;
+}
+
 .state-human_review {
+  border-color: #e2bd7c;
+  background: rgba(226, 189, 124, 0.14);
+  color: #f0cf96;
+}
+
+.state-blocked {
   border-color: #745c39;
+  border-style: dashed;
+  background: transparent;
   color: #e2bd7c;
+}
+
+.state-failed {
+  border-color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff8f8f;
 }
 
 .state-closed {
   border-color: #315d49;
   color: #8bd6ad;
+}
+
+.state-assigned,
+.state-triaged,
+.state-received {
+  border-color: #294655;
+  color: #a9c3ce;
+}
+
+.claim-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 7px;
+  border: 1px solid #58bcae;
+  border-radius: 7px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(66, 202, 187, 0.15),
+      rgba(66, 202, 187, 0.15) 5px,
+      rgba(66, 202, 187, 0.04) 5px,
+      rgba(66, 202, 187, 0.04) 10px
+    );
+  color: #b8eee8;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.claim-marker strong {
+  color: #eef7fa;
 }
 
 .next-action,
@@ -379,12 +482,45 @@ button:disabled {
 
 .card-time {
   margin-top: 7px;
+  font-variant-numeric: tabular-nums;
 }
 
 .focus-empty {
   padding: 18px;
   border: 1px dashed #29414e;
   border-radius: 12px;
+}
+
+.inactive-section details {
+  border-top: 1px solid #203440;
+  padding-top: 12px;
+}
+
+.inactive-section summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  list-style: none;
+}
+
+.inactive-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.inactive-section summary strong {
+  font-size: 13px;
+  color: #a8c1cf;
+}
+
+.inactive-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .shift-panel {
@@ -442,7 +578,17 @@ button:disabled {
   height: 36px;
   padding: 0;
   border-radius: 50%;
-  z-index: 2;
+  z-index: 3;
+}
+
+.drawer-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -24px -24px 0;
+  padding: 24px 68px 14px 24px;
+  border-bottom: 1px solid #203440;
+  background: #091822;
 }
 
 .detail-section {
@@ -462,6 +608,23 @@ button:disabled {
 
 .current-state-card {
   border-left-color: #42cabb;
+}
+
+.detail-state-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #a8c1cf;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-next-action {
+  margin-top: 8px;
+  color: #d5e5eb;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .primary-action {
@@ -487,12 +650,41 @@ button:disabled {
   margin-top: 10px;
 }
 
+.action-error {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #ff4d4d;
+  border-radius: 8px;
+  background: rgba(255, 77, 77, 0.08);
+  color: #ffb3b3;
+  font-size: 11px;
+}
+
 .timeline-item {
   margin-top: 10px;
   padding: 10px;
   border-left: 2px solid #315668;
   background: #0d202b;
   border-radius: 0 9px 9px 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.claim-callout {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid #58bcae;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(66, 202, 187, 0.12),
+      rgba(66, 202, 187, 0.12) 6px,
+      rgba(9, 24, 34, 0.8) 6px,
+      rgba(9, 24, 34, 0.8) 12px
+    );
+  color: #d6efec;
   font-size: 11px;
   line-height: 1.45;
 }
@@ -524,6 +716,10 @@ button:disabled {
     justify-content: flex-start;
   }
 
+  .refresh-alert {
+    padding: 10px 18px;
+  }
+
   main {
     padding: 16px;
   }
@@ -534,17 +730,24 @@ button:disabled {
 
   .panel-heading,
   .section-title,
-  .subsection-heading {
+  .subsection-heading,
+  .inactive-section summary {
     gap: 10px;
   }
 
   .latest-work,
-  .board {
+  .board,
+  .inactive-board {
     grid-template-columns: 1fr;
   }
 
   .drawer {
     width: 100vw;
     padding: 20px;
+  }
+
+  .drawer-header {
+    margin: -20px -20px 0;
+    padding: 20px 64px 14px 20px;
   }
 }
