@@ -247,6 +247,24 @@ async function loadShifts() {
     : '<div class="empty">No shift snapshots yet</div>';
 }
 
+async function loadIntelligence() {
+  const value = await json("/api/intelligence");
+  const recommendations = Array.isArray(value.recommendations) ? value.recommendations : [];
+  document.querySelector("#intelligence-panel").innerHTML = [
+    `<div class="platform-fact"><strong>${escapeHtml(value.authority)}</strong> · ${escapeHtml(value.sample_size)} historical synthetic issues · Memory Bank ${escapeHtml(value.memory_bank?.status || "UNKNOWN")}</div>`,
+    ...recommendations.map((item) => `<div class="platform-fact">${escapeHtml(item)}</div>`),
+    `<div class="platform-fact">Provenance: ${escapeHtml(value.provenance?.source_collection || "handover_issues")} · generated ${escapeHtml(shortTime(value.generated_at))}<br>Memory: ${escapeHtml(value.memory_bank?.memory_name || "not yet synchronized")}</div>`,
+  ].join("");
+}
+
+async function loadPlatform() {
+  const value = await json("/api/platform");
+  document.querySelector("#platform-panel").innerHTML = `
+    <div class="platform-fact"><strong>DEPLOYED</strong> · Google ADK Agent Runtime<br>${escapeHtml(value.agent_runtime.resource)}</div>
+    <div class="platform-fact"><strong>Managed Agent Identity</strong> · ${escapeHtml(value.agent_runtime.identity)}<br>Registry: ${escapeHtml(value.registry.discovery)} · ${escapeHtml(value.registry.verification)}</div>
+    <div class="platform-fact"><strong>Cloud Run request tracing</strong><br>${escapeHtml(value.observability.export)}</div>`;
+}
+
 function actionControls(issue) {
   if (issue.state === "ACTION_PENDING") {
     return `<div class="detail-section primary-action"><span class="eyebrow">Next governed action</span><h3>Record trusted evidence</h3><div class="timeline-item">Synthetic acceptance control. Evidence is recorded through the dedicated trusted-evidence identity; it cannot close the issue.</div><button class="primary-action-button" data-issue-action="complete" data-issue-id="${escapeAttr(issue.id)}">Record synthetic trusted evidence</button><div class="action-error hidden" role="alert"></div></div>`;
@@ -342,7 +360,13 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
 
 async function refresh() {
   try {
-    await Promise.all([loadSummary(), loadBoard(), loadShifts()]);
+    await Promise.all([
+      loadSummary(),
+      loadBoard(),
+      loadShifts(),
+      loadIntelligence(),
+      loadPlatform(),
+    ]);
     refreshAlert.classList.add("hidden");
     refreshAlert.textContent = "";
     document.body.classList.remove("data-stale");

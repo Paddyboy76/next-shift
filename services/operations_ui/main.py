@@ -23,6 +23,7 @@ from state_authority import (
     persist_handover_proposals,
 )
 from trace import build_lifecycle_trace
+from intelligence import current_intelligence
 
 
 app = Flask(__name__)
@@ -76,6 +77,34 @@ def health():
 def summary():
     return jsonify(
         dashboard_summary()
+    )
+
+
+@app.get("/api/intelligence")
+def intelligence():
+    return jsonify(current_intelligence())
+
+
+@app.get("/api/platform")
+def platform():
+    return jsonify(
+        {
+            "agent_runtime": {
+                "resource": "projects/963749706976/locations/asia-southeast1/reasoningEngines/8140616966286082048",
+                "framework": "google-adk",
+                "identity": "AGENT_IDENTITY",
+                "lifecycle": "DEPLOYED",
+            },
+            "observability": {
+                "provider": "Cloud Run request tracing",
+                "export": "Cloud Logging trace and span correlation",
+            },
+            "registry": {
+                "api": "agentregistry.googleapis.com",
+                "discovery": "Agent Runtime supports automatic registration",
+                "verification": "RUNNER_REGISTRY_READ_BLOCKED",
+            },
+        }
     )
 
 
