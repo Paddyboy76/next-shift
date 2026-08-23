@@ -265,7 +265,13 @@ async function loadPlatform() {
     <div class="platform-fact"><strong>Cloud Run request tracing</strong><br>${escapeHtml(value.observability.export)}</div>`;
 }
 
-function actionControls(issue) {
+function actionControls(issue, recoveryPlans = []) {
+  if (issue.state === "ACTION_PENDING" && issue.verification_status === "REJECTED") {
+    if (recoveryPlans.some((plan) => plan.status === "SANCTIONED" && plan.state_observed === "ACTION_PENDING")) {
+      return `<div class="detail-section primary-action"><span class="eyebrow">Sanctioned recovery</span><h3>Request fresh trusted evidence</h3><div class="timeline-item">The recovery action was explicitly sanctioned. A new external observation is still required, and only the independent verifier can close the issue.</div><button class="primary-action-button" data-issue-action="complete" data-issue-id="${escapeAttr(issue.id)}">Record fresh synthetic trusted evidence</button><div class="action-error hidden" role="alert"></div></div>`;
+    }
+    return `<div class="detail-section primary-action"><span class="eyebrow">Controlled recovery</span><h3>Failure understood · plan required</h3><div class="timeline-item">The rejected verification is durable. Generate an advisory plan from authoritative state; no state change or closure is permitted.</div><button class="primary-action-button" data-recovery-action="plan" data-issue-id="${escapeAttr(issue.id)}">Generate controlled recovery plan</button><div class="action-error hidden" role="alert"></div></div>`;
+  }
   if (issue.state === "ACTION_PENDING") {
     return `<div class="detail-section primary-action"><span class="eyebrow">Next governed action</span><h3>Record trusted evidence</h3><div class="timeline-item">Synthetic acceptance control. Evidence is recorded through the dedicated trusted-evidence identity; it cannot close the issue.</div><button class="primary-action-button" data-issue-action="complete" data-issue-id="${escapeAttr(issue.id)}">Record synthetic trusted evidence</button><div class="action-error hidden" role="alert"></div></div>`;
   }
@@ -273,6 +279,33 @@ function actionControls(issue) {
     return `<div class="detail-section primary-action"><span class="eyebrow">Next governed action</span><h3>Independent verification</h3><div class="timeline-item">The verifier independently reads trusted evidence and requests closure through State Authority.</div><button class="primary-action-button" data-issue-action="verify" data-issue-id="${escapeAttr(issue.id)}">Run independent verifier</button><div class="action-error hidden" role="alert"></div></div>`;
   }
   return "";
+}
+
+function recoverySection(issue, plans) {
+  if (!plans.length) return "";
+  return `<div class="detail-section"><h3>Controlled recovery</h3>${plans.map((plan) => {
+    const sanction = plan.status === "PROPOSED"
+      ? `<button class="primary-action-button" data-recovery-action="sanction" data-issue-id="${escapeAttr(issue.id)}" data-plan-id="${escapeAttr(plan.id)}">Sanction this recovery action</button>`
+      : `<div class="claim-callout"><strong>Sanctioned</strong><br>${escapeHtml(plan.sanctioned_by || "Authorized operator")}</div>`;
+    return `<div class="timeline-item"><strong>${escapeHtml(plan.recommended_action)}</strong> · ${escapeHtml(plan.status)}<br>Failure: ${escapeHtml(plan.failure_reason)}<br>${escapeHtml(plan.recommendation)}<br><small>${escapeHtml(plan.authority_boundary)}</small>${sanction}<div class="action-error hidden" role="alert"></div></div>`;
+  }).join("")}</div>`;
+}
+
+async function runRecoveryAction(issueId, action, planId, button) {
+  const original = button.textContent;
+  const errorBox = button.parentElement.querySelector(".action-error");
+  button.disabled = true;
+  button.textContent = action === "plan" ? "Planning safely…" : "Sanctioning…";
+  try {
+    const path = action === "plan" ? `/api/issues/${issueId}/recovery-plan` : `/api/issues/${issueId}/recovery-plans/${planId}/sanction`;
+    await json(path, { method: "POST" });
+    await refresh();
+    await openIssue(issueId);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = original;
+    if (errorBox) { errorBox.textContent = error.message; errorBox.classList.remove("hidden"); }
+  }
 }
 
 function humanReachSection(delivery) {
@@ -308,11 +341,13 @@ async function openIssue(issueId, origin = null) {
   const evidence = payload.evidence || [];
   const transitions = payload.transitions || [];
   const humanReach = payload.human_reach || null;
+  const recoveryPlans = payload.recovery_plans || [];
   if (origin instanceof HTMLElement) drawerOrigin = origin;
 
   drawerContent.innerHTML = `<div class="drawer-header"><span class="eyebrow">${escapeHtml(issue.owner)}</span><h2>${escapeHtml(issue.title || issue.id)}</h2></div>
     <div class="detail-section current-state-section"><h3>Current state</h3><div class="timeline-item current-state-card"><div class="detail-state-row">${statePill(issue.state)}<span title="${escapeAttr(shortTime(issue.last_transition_at || issue.updated_at || issue.created_at))}">In state ${escapeHtml(timeInState(issue))}</span></div><div class="detail-next-action">${escapeHtml(nextActions[issue.state] || "")}</div></div></div>
-    ${actionControls(issue)}
+    ${actionControls(issue, recoveryPlans)}
+    ${recoverySection(issue, recoveryPlans)}
     ${humanReachSection(humanReach)}
     <div class="detail-section"><h3>Trusted evidence</h3>${evidence.length ? evidence.map((item) => `<div class="timeline-item"><strong>${escapeHtml(item.evidence_type)}</strong><br>Source: ${escapeHtml(item.source)}<br>Subject: ${escapeHtml(item.subject)}<br>${item.verified_by ? `Verified by: ${escapeHtml(item.verified_by)}` : "Awaiting independent verification"}</div>`).join("") : '<div class="empty">No evidence recorded yet</div>'}</div>
     <div class="detail-section"><h3>Operational history</h3>${(issue.history || []).length ? issue.history.slice().reverse().map((event) => `<div class="timeline-item"><strong>${escapeHtml(event.from || "START")} → ${escapeHtml(event.to)}</strong><br>${escapeHtml(event.reason || "")}<br><small>${escapeHtml(event.actor || "")} · ${escapeHtml(shortTime(event.at))}</small></div>`).join("") : '<div class="empty">No history</div>'}</div>
@@ -320,6 +355,7 @@ async function openIssue(issueId, origin = null) {
 
   const actionButton = drawerContent.querySelector("[data-issue-action]");
   if (actionButton) actionButton.addEventListener("click", () => runIssueAction(actionButton.dataset.issueId, actionButton.dataset.issueAction, actionButton));
+  drawerContent.querySelectorAll("[data-recovery-action]").forEach((button) => button.addEventListener("click", () => runRecoveryAction(button.dataset.issueId, button.dataset.recoveryAction, button.dataset.planId, button)));
   drawer.scrollTop = 0;
   drawer.classList.remove("hidden");
   backdrop.classList.remove("hidden");

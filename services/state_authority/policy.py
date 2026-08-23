@@ -158,7 +158,7 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
     ): PrincipalPolicy(
         owner="Intake",
         capabilities=frozenset(
-            {"intake.create"}
+            {"intake.create", "recovery.sanction"}
         ),
     ),
     (
@@ -243,7 +243,7 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
     ): PrincipalPolicy(
         owner="CoverageCritic",
         capabilities=frozenset(
-            {"coverage.review"}
+            {"coverage.review", "recovery.read", "recovery.plan"}
         ),
     ),
     (
@@ -378,6 +378,21 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
     ),
     "human_reach.delivery_update": CapabilityPolicy(
         owner="HumanReach",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.read": CapabilityPolicy(
+        owner="RecoveryPlanner",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.plan": CapabilityPolicy(
+        owner="RecoveryPlanner",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.sanction": CapabilityPolicy(
+        owner="Intake",
         allowed_update_fields=frozenset(),
         transitions={},
     ),

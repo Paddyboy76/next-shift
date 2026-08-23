@@ -44,6 +44,7 @@ def build_lifecycle_trace(
     evidence = list(bundle.get("evidence") or [])
     human_reach = bundle.get("human_reach") or None
     verification_attempts = list(bundle.get("verification_attempts") or [])
+    recovery_plans = list(bundle.get("recovery_plans") or [])
 
     issue_id = _text(issue.get("id"))
     owner = _text(issue.get("owner"))
@@ -213,6 +214,22 @@ def build_lifecycle_trace(
                 f"Reason: {_text(attempt.get('reason'))}. "
                 "No closure occurred; work returned for new trusted evidence."
             ),
+        ))
+
+    for plan in recovery_plans:
+        items.append(_event(
+            stage="CONTROLLED_RECOVERY",
+            title=f"Recovery plan {str(plan.get('status', 'PROPOSED')).lower()}",
+            at=plan.get("sanctioned_at") or plan.get("created_at"),
+            actor=plan.get("sanctioned_by") or plan.get("planner"),
+            authority="State Authority",
+            status=_text(plan.get("status")),
+            identifiers={"recovery_plan_id": plan.get("id"),
+                         "recommended_action": plan.get("recommended_action"),
+                         "state_observed": plan.get("state_observed")},
+            detail=(f"Failure: {_text(plan.get('failure_reason'))}. "
+                    f"{_text(plan.get('recommendation'))} Boundary: "
+                    f"{_text(plan.get('authority_boundary'))}."),
         ))
 
     items.sort(key=lambda item: item.get("at") or "")

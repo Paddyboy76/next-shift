@@ -11,7 +11,7 @@ Pre-autonomy readiness: **159 PASS / 0 WARN / 0 FAIL**
 | 09-coverage-critic-evidence-inspector | COMPLETE | 274fd90 |
 | 10-registry-memory-otel | COMPLETE | d3a3a5a |
 | 11-gateway-model-armor-trace-proof | COMPLETE | 171656d |
-| 12-recovery-planner | PENDING | - |
+| 12-recovery-planner | COMPLETE | 22fda09 |
 | 13-reproducibility-submission | PENDING | - |
 | 14-spoken-handover | PENDING | - |
 | 15-four-minute-demo-public-bonus | PENDING | - |

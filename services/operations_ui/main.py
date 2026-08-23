@@ -4,6 +4,7 @@ import uuid
 
 from flask import Flask
 from flask import jsonify
+from recovery import create_plan, sanction_plan
 from flask import render_template
 from flask import request
 
@@ -202,6 +203,22 @@ def verify_issue(
         )
 
     return jsonify(result)
+
+
+@app.post("/api/issues/<issue_id>/recovery-plan")
+def recovery_plan(issue_id: str):
+    try:
+        return jsonify(create_plan(issue_id)), 201
+    except RuntimeError as exc:
+        return jsonify({"error": "recovery_planning_failed", "message": str(exc)}), 502
+
+
+@app.post("/api/issues/<issue_id>/recovery-plans/<plan_id>/sanction")
+def recovery_plan_sanction(issue_id: str, plan_id: str):
+    try:
+        return jsonify(sanction_plan(issue_id, plan_id))
+    except RuntimeError as exc:
+        return jsonify({"error": "recovery_sanction_failed", "message": str(exc)}), 502
 
 
 @app.get("/api/shifts")
