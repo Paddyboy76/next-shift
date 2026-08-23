@@ -202,8 +202,7 @@ Do not output PASS unless the phase is genuinely complete and verified.
 PROMPT
     } > "${prompt_file}"
 
-    codex exec \
-        --ask-for-approval never \
+    codex --ask-for-approval never exec \
         --sandbox danger-full-access \
         --output-last-message "${last_message}" \
         "$(cat "${prompt_file}")" \
