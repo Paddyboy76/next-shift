@@ -1,124 +1,98 @@
-# Next Shift architecture and security model
+# Next Shift architecture, authority, and security model
 
-## Architectural principle
+## Product boundary
 
-Next Shift separates **reasoning**, **operational authority**, **frontline coordination**, and **proof of completion**.
+Next Shift is a general operational handover and continuity system for 24/7 enterprises. The demonstration domain is fully synthetic, non-clinical hospital operations.
 
-The LLM can interpret a messy handover and propose work. It does not own operational truth. Firestore does. Every mutation of that truth is mediated by State Authority.
+| Concern | Component | Authority |
+|---|---|---|
+| Interpret ambiguous text | Managed ADK Agent Runtime | Proposes typed work; cannot establish workflow truth |
+| Check intake completeness | Independent Coverage Critic | Passes or reports disagreement; cannot create work directly |
+| Own current workflow state | State Authority + Firestore | Sole mutation path and authoritative truth |
+| Execute owner-specific work | Six Cloud Run specialists | Requests only allowed owner/capability transitions |
+| Coordinate frontline action | Human Reach / Google Chat | Records acknowledgements, blocks, and unverified claims |
+| Prove an external event | Trusted synthetic evidence service | Records source-specific evidence; cannot close work |
+| Inspect evidence quality | Independent Evidence Inspector | Evaluates the exact evidence and persists PASS/FAIL |
+| Certify closure | Independent Verifier | Sole caller allowed to request `VERIFYING → CLOSED` |
+| Recover delayed/rejected work | Controlled Recovery Planner | Advisory plan only; requires Operations sanction |
+| Learn historical patterns | Gemini advisor + Memory Bank | Advisory history only; cannot establish current state |
 
-## Control plane
-
-```mermaid
-flowchart LR
-    UI[Operations Control] --> AR[Managed Agent Runtime]
-    AR --> GW[Agent Gateway]
-    GW --> MA[Model Armor]
-    UI --> SA[State Authority]
-    AR --> SA
-    SA --> FS[(Firestore)]
-```
-
-The Agent Runtime uses managed Agent Identity. The client-to-agent path is bound to the `next-shift-ingress` Agent Gateway. Model Armor is attached through a `CONTENT_AUTHZ` custom authorization policy for request and response screening.
-
-## Work execution plane
+## Governed lifecycle
 
 ```mermaid
-flowchart TD
-    SA[State Authority] --> PS[Pub/Sub handover topic]
-    PS --> F[Facilities]
-    PS --> A[Asset Logistics]
-    PS --> L[Language Access]
-    PS --> D[Discharge DME]
-    PS --> E[EVS Throughput]
-    PS --> T[Patient Transport]
-    F --> SA
-    A --> SA
-    L --> SA
-    D --> SA
-    E --> SA
-    T --> SA
+sequenceDiagram
+    participant O as Operator
+    participant A as Agent Runtime
+    participant C as Coverage Critic
+    participant S as State Authority
+    participant F as Firestore
+    participant P as Pub/Sub + Specialist
+    participant H as Human Reach
+    participant E as Trusted Evidence
+    participant I as Evidence Inspector
+    participant V as Independent Verifier
+    O->>A: messy synthetic handover
+    A->>C: proposals + source text
+    C-->>A: PASS or disagreement
+    A->>S: approved typed proposals
+    S->>F: persist RECEIVED issues
+    S->>P: versioned owner-routed events
+    P->>S: authorized deterministic progress
+    S->>H: durable frontline request
+    H->>S: acknowledgement / block / claim
+    Note over S,F: completion claim remains unverified
+    E->>S: source-specific evidence
+    S->>F: ACTION_PENDING → VERIFYING
+    V->>I: inspect exact evidence
+    I-->>V: durable PASS / FAIL
+    V->>S: closure request after PASS
+    S->>F: VERIFYING → CLOSED
 ```
 
-Each specialist has:
+The initiating user need not stay connected. Work persists, events wake specialists, current-state checks make workflows resumable, and closure remains independently controlled.
 
-- a dedicated Cloud Run service
-- a dedicated runtime service account
-- a dedicated Pub/Sub push service account
-- an owner-filtered production subscription
-- OIDC push audience bound to the intended Cloud Run URL
-- retry backoff of 10–60 seconds
-- dead-letter routing after 5 attempts
+## Governed model ingress
 
-The specialist does not write Firestore directly. It requests a deterministic transition from State Authority.
+Operations Control is private behind IAP. Managed Agent Runtime uses Agent Identity and is represented in Agent Registry. The runtime is bound to `next-shift-ingress`, an Agent Gateway configured for `CLIENT_TO_AGENT`. A `CONTENT_AUTHZ` policy calls regional Model Armor prompt-injection/jailbreak filtering with fail-open disabled.
 
-## Human Reach
+The production proof is behavioral: the same `reasoningEngines:streamQuery` endpoint returned HTTP 200 for a benign synthetic handover and HTTP 403 for a controlled instruction-bypass probe. The proof logs decisions and resource identifiers, never prompt bodies.
 
-When work reaches `ACTION_PENDING`, State Authority can stage a Human Reach delivery. A dedicated Human Reach Cloud Run service delivers the work into one of two durable Google Chat spaces:
+## Work execution and reliability
 
-- **Next Shift - Facilities Ops** — Facilities, AssetLogistics, EVSThroughput
-- **Next Shift - Patient Flow** — LanguageAccess, DischargeDME, PatientTransport
+The handover topic fans out through six owner-filtered push subscriptions. Each path has dedicated specialist and push identities, an exact Cloud Run audience, 10–60 second retry backoff, five maximum delivery attempts, and the shared dead-letter topic.
 
-Human responses can acknowledge, block or claim completion. They do not close work.
+Versioned contracts, processed-event records, current-state checks, and transactional transitions provide resumability and idempotency. Acceptance evidence includes a duplicate event acknowledged without duplicate mutation and a malformed event reaching the DLQ after bounded retry.
 
-A stale Human Reach response is rejected if authoritative issue state is no longer `ACTION_PENDING`. This is enforced transactionally by State Authority and emits an auditable `authorization.decision` denial.
+## Least privilege
 
-## Evidence and verification
+State Authority is the only Next Shift runtime identity with Firestore write access. Operations has viewer access. Specialists, Human Reach, trusted evidence, verifier, Coverage Critic, Evidence Inspector, and Recovery Planner have no direct Firestore data roles.
 
-```mermaid
-flowchart LR
-    AP[ACTION_PENDING] --> TE[Trusted Evidence]
-    TE --> VY[VERIFYING]
-    VY --> IV[Independent Verifier]
-    IV --> C[CLOSED · VERIFIED]
-```
+State Authority validates principal, capability, owner, current state, requested transition, and evidence prerequisites. Unauthorized actions produce durable `authorization.decision` denials without state mutation. Narrow Cloud Run invoker bindings and Pub/Sub OIDC audiences reinforce that boundary.
 
-Evidence and verifier services have no direct Firestore role. They invoke State Authority.
+## Evidence independence
 
-The closure invariant is:
+1. A specialist or frontline person may claim action, but work remains unverified.
+2. A trusted source-specific synthetic integration records evidence and moves eligible work to `VERIFYING`.
+3. The verifier calls a separately authenticated Evidence Inspector for that exact evidence ID; only an inspection PASS permits closure.
 
-> A specialist claim or human completion claim is not sufficient evidence. `VERIFYING → CLOSED` requires trusted evidence and an independent verifier.
+Evidence, inspector, and verifier identities have no direct Firestore role and distinct State Authority capabilities. Independence is visible in IAM, durable records, and the lifecycle trace.
 
-## Firestore authority
+## Controlled recovery
 
-Live IAM verification proves:
+For delayed `ACTION_PENDING`, `BLOCKED`, `HUMAN_REVIEW`, or rejected verification paths, Recovery Planner reads bounded authoritative context and writes a recommendation with an allowlisted action and observed state. It cannot change owner, record evidence, mutate issue state, or close work. Operations must sanction the exact plan, and sanction fails if observed state is stale. Execution returns to the trusted-evidence and verifier path.
 
-- `ns-state-authority` is the only Next Shift runtime identity with `roles/datastore.user`.
-- `ns-operations-ui` has `roles/datastore.viewer` only.
-- specialist workers, Human Reach, trusted evidence and verifier have no datastore role.
+## Memory and lifecycle
 
-This makes State Authority the technical mutation choke point.
+Agent Registry contains the real managed `Next Shift` agent and `next-shift-runtime` service linked to the ADK reasoning engine. Memory Bank stores Gemini-generated improvement advice grounded in exact synthetic Firestore references and prior managed memory facts.
 
-## Cloud Run invocation boundaries
+Memory is `ADVISORY_ONLY`, identifies Firestore as current-state authority, and declares `may_mutate_workflow=false`.
 
-Production invoker bindings are narrowly scoped:
+## Observability truth
 
-- each specialist is invoked only by its matching `ns-push-*` identity
-- Human Reach is invoked only by `ns-push-human-reach`
-- trusted evidence and verifier are invoked only by Operations
-- Operations is invoked only by the IAP service agent
-- State Authority is invokable only by the explicitly authorized internal runtime identities
+The `/trace/<issue_id>` route assembles real durable correlation records: intake reference, event/message IDs, transitions, principals, capabilities, Human Reach, evidence, inspection, verification, recovery sanction, and final state. Cloud Run logs provide real platform trace/span identifiers separately.
 
-## Reliability
-
-The event path provides:
-
-- versioned events
-- owner routing metadata
-- owner-filtered subscriptions
-- idempotent duplicate handling
-- bounded retry
-- dead-letter queue
-- resumable workflows
-- current-state checks before mutation
-
-Acceptance testing proved a malformed event retried five times and reached the dead-letter review subscription, while a duplicate valid event was ACKed without duplicate state mutation.
-
-## Observability
-
-The `/trace/<issue_id>` view is a judge-visible authoritative lifecycle trace. It combines Firestore issue history, transition-event records, Human Reach data and evidence records. Cloud Run request traces remain available separately in Cloud Logging.
-
-The lifecycle trace intentionally does not pretend that unrelated Cloud Run requests share one distributed trace ID. It presents the real durable correlation chain instead.
+These are not presented as one fabricated distributed trace. Native application OTLP export was attempted but denied at the available permission boundary, so no exported application spans are claimed. The product retains truthful Cloud Run telemetry and authoritative lifecycle correlation.
 
 ## Safety boundary
 
-The system is synthetic and non-clinical. It rejects authority over diagnosis, prescribing, clinical triage, treatment interpretation and licensed clinical work. This boundary is preserved across prompt behavior, Model Armor screening and deterministic operational routing.
+The fleet accepts only non-clinical operational work. Diagnosis, prescribing, clinical acuity decisions, treatment interpretation, and licensed clinical delegation are outside its authority. All demonstration data and integrations are synthetic.

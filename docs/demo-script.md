@@ -1,158 +1,93 @@
 # Next Shift final demo script
 
-## Demo objective
+## Objective
 
-Show that Next Shift is not a handover summarizer or a collection of chatbots. It is a governed operational fleet that continues work across shifts and refuses to trust unverified completion claims.
+In four minutes, prove that Next Shift is a governed operational fleet—not a summarizer, chatbot collection, or decorative dashboard. Use only prepared synthetic operational data and live, already-verified product paths.
 
-Target length: 4–6 minutes.
+## 0:00–0:20 — opening
 
-## Opening — 20 seconds
+“Every 24/7 operation has the same failure point: work crosses a shift, context gets compressed, and nobody can prove what happened next. Next Shift does not summarize the handover. It finishes the operational work left behind by it.”
 
-“Every 24/7 operation has the same failure point: work crosses a shift boundary, context gets compressed into handover notes, and somebody later has to figure out what actually happened. Next Shift does not summarize the handover. It finishes the operational work left behind by it.”
+Show the IAP-protected Operations Control home screen.
 
-Show Operations Control.
+## 0:20–0:55 — messy handover to governed work
 
-## Scene 1 — messy handover becomes durable work
+Submit one synthetic handover containing a missing wheelchair, interpreter coordination, home oxygen delivery, EVS turnaround, a leaking sink, and patient transport.
 
-Paste one synthetic handover containing:
+“The managed Agent Runtime decomposes one messy note into six typed proposals. A separate Gemini Coverage Critic checks for omissions, duplication, conflation, uncertainty, and routing errors. Only then does State Authority create durable Firestore work.”
 
-- missing standard wheelchair
-- Spanish interpreter request
-- home oxygen DME pending
-- EVS room turnaround
-- leaking sink
-- patient transport to Discharge Lounge
+Show all six owners and the critic result. Do not claim success until the queue visibly contains the expected issues.
 
-Narration:
+## 0:55–1:20 — least-privilege execution
 
-“One messy handover becomes six independent operational jobs. The Agent Runtime interprets the text, but it does not own workflow truth. State Authority persists the work into Firestore.”
+“Owner-filtered Pub/Sub wakes six dedicated Cloud Run specialists. Each has its own identity and can request only its owner-specific capabilities. State Authority is the only runtime identity that writes workflow truth.”
 
-Show the ranked work queue populated across all six specialist owners.
+Show one issue progressing to `ACTION_PENDING` and its principal/capability trace entries.
 
-## Scene 2 — least-privilege fleet
+## 1:20–2:05 — the trust boundary
 
-Briefly show the six owners and explain:
+Open a prepared Google Chat work card and click **Completed**.
 
-“Each job is published with owner metadata. Pub/Sub subscriptions are filtered by owner, each push path uses its own OIDC identity, and each specialist runs under a dedicated service account.”
+“A frontline person says the work is complete. Next Shift records the claim—but does not trust it as proof.”
 
-Optional terminal cutaway:
+Show `CLAIMED · UNVERIFIED`. Record trusted synthetic evidence, then show `VERIFYING`.
 
-`bash verify_readiness.sh`
+“A separate Evidence Inspector checks the exact evidence issuer, provenance, subject, capability, timestamp, and coverage. Only after PASS may the independent verifier request closure.”
 
-Use the final line only:
+Run verification and show `CLOSED · VERIFIED`, including evidence ID, inspector identity/result, and verifier identity.
 
-`PASS=159 WARN=0 FAIL=0 — NEXT_SHIFT_READINESS=PASS`
-
-Narration:
-
-“State Authority is the only Next Shift runtime identity that can write Firestore. Specialists cannot bypass it.”
-
-## Scene 3 — frontline coordination
-
-Open one Google Chat Human Reach card.
-
-Narration:
-
-“Operational work often leaves the software boundary. Next Shift reaches the frontline through Google Chat with WHO, WHAT, WHERE and a work order.”
-
-Point out that the card offers acknowledgement, block or completion claim actions.
-
-## Scene 4 — the defining trust boundary
-
-Use a fresh issue in `ACTION_PENDING` and click **Completed** in Google Chat.
-
-Narration:
-
-“This is the part that matters: a human says the task is complete. Next Shift records that as a claim. It does not treat the claim as proof.”
-
-Show Operations Control displaying `CLAIMED · UNVERIFIED`.
-
-Then record trusted synthetic evidence.
-
-Narration:
-
-“A trusted external evidence identity records evidence. That moves the issue to `VERIFYING`, but still does not close it.”
-
-Run the independent verifier.
-
-Narration:
-
-“Only an independent verifier can request `VERIFYING → CLOSED`. The specialist, frontline worker and evidence service cannot self-certify closure.”
-
-Show `CLOSED · VERIFIED`.
-
-## Scene 5 — governed lifecycle trace
+## 2:05–2:35 — trace and denial
 
 Open `/trace/<issue_id>`.
 
-Narration:
+“This trace is assembled from authoritative durable records: intake, event, route, specialist, human claim, evidence, inspection, verifier, and final state. Cloud Run request telemetry remains separately inspectable; we do not fabricate one distributed trace.”
 
-“Every important decision is inspectable. This is not decorative telemetry. These are the real durable IDs, principals, capabilities, timestamps, Human Reach records, evidence record and verifier identity that produced the final state.”
+Show the prepared stale-action denial: `decision=DENY`, reason `human_reach_stale_response`, expected `ACTION_PENDING`, current `CLOSED`. Confirm that issue state and Human Reach history did not change.
 
-Scroll through:
+## 2:35–3:05 — controlled recovery
 
-- intake
-- specialist transitions
-- Human Reach
-- trusted evidence
-- verifier
-- closed state
+Open the prepared delayed/rejected operational work example and generate a Recovery Planner recommendation.
 
-## Scene 6 — stale action is denied
+“Recovery is also least privilege. The planner can understand current state and recommend an allowlisted next action, but it cannot mutate work, record evidence, change owner, or close anything.”
 
-Show the previously accepted stale-response proof, or perform it on a prepared issue if time allows.
+Show the explicit Operations sanction and the `ADVISORY_NO_STATE_MUTATION_NO_CLOSURE` boundary. Then use the prepared proof of fresh evidence and independent closure; do not create a failure during recording.
 
-Narration:
+## 3:05–3:30 — platform and memory
 
-“Even an old valid Google Chat card cannot mutate work after authoritative state has moved on.”
+Show the architecture diagram and Operational Improvement Advisor.
 
-Show audit line:
+“The ADK runtime uses managed Agent Identity and is registered in Agent Registry. Agent Gateway and fail-closed Model Armor govern the client-to-agent path. Gemini turns synthetic history into evidence-linked recommendations stored in Memory Bank, but memory is advisory only—Firestore remains current-state truth.”
 
-- `decision=DENY`
-- `principal=ns-human-reach@...`
-- `capability=human_reach.delivery_update`
-- `reason=human_reach_stale_response`
-- `current=CLOSED`
-- `expected=ACTION_PENDING`
+Briefly show recommendation provenance and `may_mutate_workflow=false`.
 
-Narration:
+## 3:30–3:50 — security proof
 
-“The request reached the real production path and State Authority rejected it. Firestore stayed `CLOSED · VERIFIED`.”
+Show the prepared successful output of:
 
-## Scene 7 — prohibited clinical request
+```bash
+bash scripts/verify_gateway_model_armor_trace.sh
+```
 
-Submit a synthetic clinical instruction such as a medication-prescribing request.
+Point to benign HTTP 200, instruction-bypass HTTP 403, managed identity, fail-open false, and inspectable trace ID. The probe creates no operational work.
 
-Narration:
+Show only the final readiness summary from clean current `main`: zero warnings, zero failures, `NEXT_SHIFT_READINESS=PASS`. Do not hard-code the pre-autonomy pass count as the current count.
 
-“Next Shift’s authority is deliberately narrow. Clinical work is outside scope. A prohibited instruction is refused without creating operational work.”
+## 3:50–4:00 — close
 
-Do not linger on the clinical example; the point is the authority boundary.
+“Next Shift is built around one principle: no agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable. The handover ends. The work does not.”
 
-## Scene 8 — Google platform architecture
+## Recording checklist
 
-Use the architecture diagram while narrating:
+Capture and rehearse these live facts in advance:
 
-“Next Shift runs on a managed Agent Runtime with Agent Identity. Agent Gateway governs the client-to-agent path. Model Armor is attached through content authorization. State Authority is the Firestore mutation choke point. Cloud Run and Pub/Sub provide the event-driven specialist fleet. Google Chat provides Human Reach. Trusted evidence plus an independent verifier control closure.”
+1. expected six-owner intake plus Coverage Critic result;
+2. specialist principal/capability trace;
+3. Google Chat claim remaining unverified;
+4. evidence ID, inspection PASS, verifier identity, and closed state;
+5. stale-action denial with unchanged state;
+6. sanctioned recovery boundary and completed recovery proof;
+7. Registry/Memory advisor provenance;
+8. Gateway/Model Armor behavioral proof;
+9. final clean-main readiness result.
 
-## Closing — 20 seconds
-
-“Next Shift is built around one principle: no agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned and verifiable. That is how a handover stops being a summary and becomes finished work.”
-
-## Recording guidance
-
-Capture clean shots of:
-
-1. empty/clean Operations Control opening
-2. handover text before submit
-3. six-owner work queue after submit
-4. one Human Reach Google Chat card
-5. `CLAIMED · UNVERIFIED`
-6. evidence → `VERIFYING`
-7. verifier → `CLOSED · VERIFIED`
-8. governed lifecycle trace
-9. stale-response DENY audit line
-10. final architecture diagram
-11. readiness verifier final result
-
-Avoid showing Cloud Shell clutter unless it proves a security/reliability point. Prefer the UI and trace page for the main story.
+If a live step fails, show the failure truthfully or use an already-inspected durable proof record. Never imply that a planned or configured feature executed when it did not.
