@@ -8,52 +8,88 @@ Region: `asia-southeast1`
 ## What was inspected
 
 - Read all 809 lines of `AGENTS.md` before architectural changes.
-- Fetched origin and verified the controller branch remained `codex/autonomous-final-attack` at `a34cc5e2836b1a80217c0a4fe1b27280a33a191f`; preserved the controller's pre-existing `docs/autonomy/STATUS.md` edit.
+- Fetched origin and verified the controller branch remained `codex/autonomous-final-attack` at `4179d79e05bfe592f49ce8930d95696e7f4f05cb`; preserved the controller-owned `docs/autonomy/STATUS.md` edit and did not change branches or perform Git publishing actions.
 - Inspected the typed Agent Runtime intake contract, Operations intake orchestration, State Authority intake validation and policy, evidence envelope and closure transaction, verifier runtime, lifecycle trace, deployment scripts and regressions.
-- Inspected live Cloud Run services/revisions/identities, Pub/Sub topics, enabled Vertex AI/Cloud Run/Firestore/Pub/Sub APIs, current project, and readiness state.
-- Attempted Firestore database and billing inspection; the runner cannot read Firestore database metadata and Cloud Billing API is disabled/inaccessible to this identity. No API was enabled merely to satisfy documentation.
+- Inspected live Cloud Run revisions, runtime identities, invoker IAM, Pub/Sub topics, project IAM, enabled platform APIs and readiness state.
+- Attempted Firestore database metadata and billing inspection. The runner cannot read Firestore database metadata, and Cloud Billing API is disabled/inaccessible to this identity; neither limitation prevents the deployed application identities from using authoritative Firestore.
 
-## What was changed in the repository
+## What was changed
 
-- Added a dedicated Coverage Critic runtime. It uses a separate Gemini call to compare raw handover text with typed intake proposals for missed, duplicated, conflated, misrouted or uncertain operational work.
-- The critic has no issue-mutation API. It can only submit a bounded review to State Authority, which persists a message hash, findings, decision, model, principal and source reference in `coverage_reviews`.
-- Operations now requires a durable critic PASS before persistence. A disagreement returns `human_review_required`, creates no issue, dispatches no event and exposes the findings to the operator.
-- Added a deterministic Evidence Inspector runtime with its own proposed identity and no direct Firestore access. It independently evaluates evidence issuer, provenance, observation mode, timestamps, capability/source/subject/details and coverage.
-- Added State Authority inspection-context and inspection-record endpoints with narrow capabilities. Inspections persist in `evidence_inspections`.
-- Added a hard closure gate: State Authority refuses verifier closure unless a PASS inspection exists for the exact issue and evidence ID. The verifier invokes the inspector before requesting closure.
-- Added a reproducible deployment script and focused adversarial tests for accepted provenance, specialist claims and wrong-capability evidence.
+- Deployed a dedicated Coverage Critic runtime under `ns-coverage-critic`. It uses a separate Gemini call to compare raw handover text with typed intake proposals for missed, duplicated, conflated, misrouted or uncertain operational work.
+- The critic has no direct Firestore role and no issue-mutation API. It can only submit a bounded review to State Authority, which persists the message hash, findings, decision, model, principal and source reference in `coverage_reviews`.
+- Operations requires a durable critic `PASS` before proposal persistence. A disagreement returns `human_review_required`, creates no issue, dispatches no event and exposes the durable findings to the operator.
+- Deployed a deterministic Evidence Inspector runtime under the separate `ns-evidence-inspector` identity. It independently evaluates evidence issuer, provenance, observation mode, timestamps, capability, source, subject, details and coverage.
+- Added narrow State Authority inspection-context and inspection-record capabilities. Inspections persist in `evidence_inspections`; the inspector has no direct Firestore role.
+- Added a hard closure gate: State Authority refuses verifier closure unless a `PASS` inspection exists for the exact issue and evidence ID. The verifier invokes the inspector before requesting closure.
+- Added focused adversarial tests for accepted provenance, specialist claims and wrong-capability evidence.
+- Extended `verify_readiness.sh` so both runtimes, identities, environment bindings and invoker boundaries are now production-readiness requirements.
 
 ## What was deliberately not changed
 
-- Firestore remains authoritative; neither critic nor inspector is designed to receive a direct Firestore role.
+- Firestore remains authoritative; neither critic nor inspector received a direct Firestore role.
 - Critics do not change issue state, routing policy, evidence or verifier authority.
-- Deterministic routing and both existing verifier and State Authority evidence checks remain in place. The inspector is an additional gate, not a replacement.
-- No Gemma call was added merely to increase model count. Semantic coverage uses Gemini; evidence policy remains deterministic.
+- Deterministic routing and both existing verifier and State Authority evidence checks remain. The inspector is an additional independent gate, not a replacement.
+- No Gemma call was added merely to increase model count. Semantic coverage uses Gemini; evidence policy remains deterministic because its evidence contracts are explicit and auditable.
 - No clinical workflow, proprietary data, fabricated telemetry or presentation mock was added.
-- No Cloud Run revision was deployed after the IAM failure, so the previously green production path was not weakened.
+- No broad runner impersonation or permanent acceptance-only IAM grant was added.
 
 ## Exact validation performed
 
 - `.venv/bin/python -m py_compile services/state_authority/*.py services/coverage_critic_runtime/main.py services/evidence_inspector_runtime/main.py services/operations_ui/*.py services/verifier_runtime/main.py`: success.
 - `.venv/bin/python -m unittest discover -s tests -p 'test_*.py'`: 119 tests passed.
 - `git diff --check`: success.
-- `READINESS_ALLOW_BRANCH=1 READINESS_ALLOW_DIRTY=1 bash ./verify_readiness.sh`: exited 0; observed checks remained PASS with only the authorized controller-branch and dirty-worktree warnings.
-- `bash ./deploy_critic_inspector.sh`: stopped before deployment when creation of `ns-coverage-critic` was denied. The exact missing permission is `iam.serviceAccounts.create`.
-- Direct describes confirmed the proposed `ns-coverage-critic` and `ns-evidence-inspector` identities are absent or hidden, while existing `ns-verifier` and `ns-trusted-evidence` identities are readable.
-- Project IAM inspection shows the runner has `roles/resourcemanager.projectIamAdmin`, `roles/run.admin`, `roles/run.sourceDeveloper` and `roles/aiplatform.admin`, but no service-account administration role.
+- `bash ./deploy_critic_inspector.sh`: `CRITIC_INSPECTOR_DEPLOY_OK=1`.
+- Ran a real authenticated Coverage Critic PASS and disagreement through a short-lived Cloud Run Job using the existing Operations identity.
+- Ran a real Facilities issue from State Authority intake through filtered Pub/Sub delivery and the specialist workflow to `ACTION_PENDING`.
+- Ran trusted evidence and independent verification through a short-lived Cloud Run Job using the existing Operations caller identity. The verifier invoked the separately authenticated Evidence Inspector before closure.
+- Queried correlated State Authority authorization logs for intake, specialist transitions, evidence recording, inspection context, inspection recording and final closure.
+- Queried error-severity logs for the five affected services after deployment; none were returned.
+- `READINESS_ALLOW_BRANCH=1 READINESS_ALLOW_DIRTY=1 bash ./verify_readiness.sh`: `PASS=169 WARN=2 FAIL=0`, `NEXT_SHIFT_READINESS=PASS`. The warnings are exactly the authorized controller branch and dirty phase worktree.
+- Deleted all three temporary acceptance Job definitions after inspection. Their execution history and durable product records remain auditable.
 
 ## Relevant live GCP evidence
 
-- Active project: `next-shift-506004`.
-- Production remains on State Authority `next-shift-state-authority-00020-l6b`, Operations `next-shift-operations-00016-dkn`, trusted evidence `next-shift-trusted-evidence-00002-mlc`, and verifier `next-shift-verifier-00002-8cn`, each serving 100% traffic at readiness inspection.
-- Existing specialist services and owner-specific identities remain ready.
-- No `next-shift-coverage-critic` or `next-shift-evidence-inspector` Cloud Run service was created.
-- The failed IAM request made no repository, Firestore, Cloud Run traffic, Pub/Sub or workflow mutation.
+Deployed revisions serving 100% traffic:
 
-## Remaining risks and blocker
+- State Authority: `next-shift-state-authority-00021-wm4`
+- Coverage Critic: `next-shift-coverage-critic-00001-gtt`
+- Evidence Inspector: `next-shift-evidence-inspector-00001-g68`
+- verifier: `next-shift-verifier-00003-69p`
+- Operations: `next-shift-operations-00017-tj2`
 
-The phase cannot be declared complete without two distinct least-privilege runtime identities. Reusing Operations for the critic or the verifier/trusted-evidence identity for the inspector would undermine the exact architectural independence this mission exists to prove. The controller identity cannot create the required service accounts and cannot list service accounts generally.
+Least-privilege runtime chain:
 
-Required external action: grant the controller temporary `roles/iam.serviceAccountAdmin` (and service-account-user authority as needed), or pre-create `ns-coverage-critic@next-shift-506004.iam.gserviceaccount.com` and `ns-evidence-inspector@next-shift-506004.iam.gserviceaccount.com`. Then rerun `bash ./deploy_critic_inspector.sh`, execute live PASS/disagreement coverage scenarios and an evidence-to-inspection-to-verifier closure, inspect the durable records, and rerun readiness.
+- Operations is the sole invoker of Coverage Critic.
+- Coverage Critic can invoke State Authority only through its bounded `coverage.review` capability.
+- verifier is the sole invoker of Evidence Inspector.
+- Evidence Inspector can invoke State Authority only through `evidence_inspection.read` and `evidence_inspection.record`.
+- State Authority remains the sole Next Shift Firestore writer; Operations remains the only Next Shift Firestore viewer.
 
-PHASE_RESULT: BLOCKED
+Live critic records:
+
+- `JOxtR6k5I1m5d2eP9AA4`: `PASS`, no findings, model `gemini-3.5-flash`, source `mission09-live-pass`.
+- `wHXDz2S0SxQCi58goBqH`: `REVIEW_REQUIRED`, durable `MISSED` finding with suggested owner `AssetLogistics` for a wheelchair omitted from the proposal. No issue was created for the disagreement scenario.
+
+Live closure proof:
+
+- Issue: `fA49pejqLiqrK6QQl6Wv`
+- Intake event: `097fd763-8768-47e1-8230-c6a1dbe01273`
+- Specialist `ACTION_PENDING` transition: `RStChalOiwpfxiv6Ij7J`
+- Trusted evidence: `yNbtfFxsUaO6p0MldEUZ`
+- Evidence transition: `PtDfwNXnno1oNDRlxJ5a`
+- Evidence inspection: `flY6Z7Ul2bCy8cp6wXO9`, decision `PASS`
+- Closure transition: `31Exoe07Lzi1Z6YysIwo`
+- Final state: `CLOSED`
+
+Correlated authorization records prove that `ns-worker-facilities` progressed work only to `ACTION_PENDING`, `ns-trusted-evidence` recorded independently sourced synthetic evidence, `ns-evidence-inspector` read and approved the exact evidence, and `ns-verifier` requested the final closure. State Authority enforced every mutation.
+
+## Remaining risks
+
+- The Coverage Critic is an LLM-based semantic safeguard, so disagreements can include model variance even at temperature zero. Its fail-closed orchestration, bounded output validation, durable findings and no-mutation design contain that risk; deterministic routing remains authoritative.
+- The evidence inspector is deterministic rather than a second model. This is intentional: explicit capability contracts are stronger and more inspectable than adding a decorative model call.
+- The runner cannot directly query Firestore database metadata. Durable records were inspected through authenticated application responses and correlated State Authority audit events rather than broadening runner access.
+- One initial acceptance Job under the trusted-evidence identity was denied at the Cloud Run edge because only Operations is authorized to invoke that service. It made no application or Firestore mutation. The successful run used the already authorized Operations caller and preserved the trusted-evidence service's separate recording identity.
+
+The phase goal is satisfied: intake coverage now has an independent, durable, fail-closed critique step; evidence closure now requires a separate inspection identity and exact-evidence PASS; disagreements are visible; deterministic routing, policy and verifier authority remain intact; and the complete deployed path is proven with authoritative records.
+
+PHASE_RESULT: PASS

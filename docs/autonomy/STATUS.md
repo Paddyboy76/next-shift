@@ -8,7 +8,7 @@ Pre-autonomy readiness: **159 PASS / 0 WARN / 0 FAIL**
 |---|---|---|
 | 07-live-truth-audit | COMPLETE | 2f25c76 |
 | 08-external-evidence-verification-failure | COMPLETE | 4e258a3 |
-| 09-coverage-critic-evidence-inspector | PENDING | - |
+| 09-coverage-critic-evidence-inspector | COMPLETE | 274fd90 |
 | 10-registry-memory-otel | PENDING | - |
 | 11-gateway-model-armor-trace-proof | PENDING | - |
 | 12-recovery-planner | PENDING | - |

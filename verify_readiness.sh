@@ -12,6 +12,8 @@ AUTHZ_EXTENSION="next-shift-ingress-model-armor"
 AUTHZ_POLICY="next-shift-ingress-model-armor-policy"
 MODEL_ARMOR_TEMPLATE="next-shift-intake-guard"
 STATE_AUTHORITY_URL="https://next-shift-state-authority-mycnigy7dq-as.a.run.app"
+COVERAGE_CRITIC_URL="https://next-shift-coverage-critic-mycnigy7dq-as.a.run.app"
+EVIDENCE_INSPECTOR_URL="https://next-shift-evidence-inspector-mycnigy7dq-as.a.run.app"
 HUMAN_REACH_TOPIC="next-shift-human-reach-requested"
 HANDOVER_TOPIC="next-shift-handover-received"
 DLQ_TOPIC="next-shift-dead-letter"
@@ -245,6 +247,10 @@ check_run_service next-shift-trusted-evidence \
     "ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-verifier \
     "ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com"
+check_run_service next-shift-coverage-critic \
+    "ns-coverage-critic@${PROJECT_ID}.iam.gserviceaccount.com"
+check_run_service next-shift-evidence-inspector \
+    "ns-evidence-inspector@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-facilities \
     "ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-asset-logistics \
@@ -263,6 +269,16 @@ if [[ -s "${OPS_FILE}" ]]; then
     expect_equal "$(json_get "${OPS_FILE}" '.metadata.annotations["run.googleapis.com/iap-enabled"]')" \
         "true" \
         "Operations UI is protected by IAP"
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "COVERAGE_CRITIC_URL") | .value' "${OPS_FILE}")" \
+        "${COVERAGE_CRITIC_URL}" \
+        "Operations uses the independent Coverage Critic"
+fi
+
+VERIFIER_FILE="${TMP_DIR}/next-shift-verifier.json"
+if [[ -s "${VERIFIER_FILE}" ]]; then
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "EVIDENCE_INSPECTOR_URL") | .value' "${VERIFIER_FILE}")" \
+        "${EVIDENCE_INSPECTOR_URL}" \
+        "Verifier requires the independent Evidence Inspector"
 fi
 
 STATE_FILE="${TMP_DIR}/next-shift-state-authority.json"
@@ -311,10 +327,14 @@ check_invokers next-shift-trusted-evidence \
     "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-verifier \
     "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
+check_invokers next-shift-coverage-critic \
+    "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
+check_invokers next-shift-evidence-inspector \
+    "serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-operations \
     "serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-iap.iam.gserviceaccount.com"
 check_invokers next-shift-state-authority \
-    "serviceAccount:ns-human-reach@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-asset-logistics@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-discharge-dme@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-evs-throughput@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-language-access@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-patient-transport@${PROJECT_ID}.iam.gserviceaccount.com"
+    "serviceAccount:ns-coverage-critic@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-evidence-inspector@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-human-reach@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-asset-logistics@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-discharge-dme@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-evs-throughput@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-language-access@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-patient-transport@${PROJECT_ID}.iam.gserviceaccount.com"
 
 section "PUB/SUB DELIVERY"
 for entry in \
