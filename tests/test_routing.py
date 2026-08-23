@@ -42,6 +42,7 @@ class OperationalOwnerTests(unittest.TestCase):
                 "LanguageAccess",
                 "DischargeDME",
                 "EVSThroughput",
+                "PatientTransport",
             },
         )
 

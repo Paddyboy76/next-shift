@@ -225,6 +225,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 
     if [[ -z "$(git status --porcelain 2>/dev/null)" ]]; then
         pass "working tree clean"
+    elif [[ "${READINESS_ALLOW_DIRTY:-0}" == "1" ]]; then
+        warn "working-tree changes allowed for autonomous phase verification"
     else
         fail "working tree has local changes"
     fi

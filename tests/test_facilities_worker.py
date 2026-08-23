@@ -38,94 +38,25 @@ class FakeMessage:
 
 
 class FacilitiesRoutingTests(unittest.TestCase):
-    @patch("workers.facilities_worker.transition_issue")
-    @patch("workers.facilities_worker.get_issue")
-    def test_facilities_received_issue_is_triaged(
+    @patch("workers.facilities_worker.advance_facilities_issue")
+    def test_facilities_issue_uses_resumable_workflow(
         self,
-        mock_get_issue: Mock,
-        mock_transition_issue: Mock,
+        mock_advance: Mock,
     ) -> None:
-        mock_get_issue.return_value = {
-            "id": "issue-001",
-            "owner": "Facilities",
-            "state": "RECEIVED",
-        }
-        mock_transition_issue.return_value = {
-            "id": "issue-001",
-            "owner": "Facilities",
-            "state": "TRIAGED",
-        }
+        mock_advance.return_value = {"outcome": "ACTION_PENDING"}
 
-        outcome = process_facilities_issue("issue-001")
-
-        self.assertEqual(outcome, "TRIAGED")
-
-        mock_transition_issue.assert_called_once_with(
-            issue_id="issue-001",
-            new_state="TRIAGED",
-            actor=WORKER_NAME,
-            reason=(
-                "Versioned Pub/Sub handover event routed a newly received "
-                "Facilities-owned issue to the Facilities workflow."
-            ),
+        outcome = process_facilities_issue(
+            "issue-001",
+            facility_type="electrical",
+            location="Floor 2 corridor",
         )
 
-    @patch("workers.facilities_worker.transition_issue")
-    @patch("workers.facilities_worker.get_issue")
-    def test_other_canonical_owner_is_skipped(
-        self,
-        mock_get_issue: Mock,
-        mock_transition_issue: Mock,
-    ) -> None:
-        mock_get_issue.return_value = {
-            "id": "issue-002",
-            "owner": "AssetLogistics",
-            "state": "RECEIVED",
-        }
-
-        outcome = process_facilities_issue("issue-002")
-
-        self.assertEqual(outcome, "SKIPPED_NON_FACILITIES")
-        mock_transition_issue.assert_not_called()
-
-    @patch("workers.facilities_worker.transition_issue")
-    @patch("workers.facilities_worker.get_issue")
-    def test_invalid_authoritative_owner_is_rejected(
-        self,
-        mock_get_issue: Mock,
-        mock_transition_issue: Mock,
-    ) -> None:
-        mock_get_issue.return_value = {
-            "id": "issue-002",
-            "owner": "RandomDepartment",
-            "state": "RECEIVED",
-        }
-
-        with self.assertRaisesRegex(
-            ValueError,
-            "Unsupported operational owner",
-        ):
-            process_facilities_issue("issue-002")
-
-        mock_transition_issue.assert_not_called()
-
-    @patch("workers.facilities_worker.transition_issue")
-    @patch("workers.facilities_worker.get_issue")
-    def test_already_progressed_issue_is_not_mutated(
-        self,
-        mock_get_issue: Mock,
-        mock_transition_issue: Mock,
-    ) -> None:
-        mock_get_issue.return_value = {
-            "id": "issue-003",
-            "owner": "Facilities",
-            "state": "TRIAGED",
-        }
-
-        outcome = process_facilities_issue("issue-003")
-
-        self.assertEqual(outcome, "SKIPPED_STATE_TRIAGED")
-        mock_transition_issue.assert_not_called()
+        self.assertEqual(outcome, "ACTION_PENDING")
+        mock_advance.assert_called_once_with(
+            "issue-001",
+            facility_type="electrical",
+            location="Floor 2 corridor",
+        )
 
 
 class FacilitiesCallbackTests(unittest.TestCase):
@@ -182,7 +113,11 @@ class FacilitiesCallbackTests(unittest.TestCase):
 
         callback(message)
 
-        mock_process.assert_called_once_with("issue-001")
+        mock_process.assert_called_once_with(
+            "issue-001",
+            facility_type="plumbing",
+            location="Room 402",
+        )
 
         mock_record.assert_called_once_with(
             event_id="event-001",

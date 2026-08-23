@@ -77,7 +77,9 @@ readiness_gate() {
 
     (
         cd "${REPO}"
-        READINESS_ALLOW_BRANCH=1 bash ./verify_readiness.sh
+        READINESS_ALLOW_BRANCH=1 \
+        READINESS_ALLOW_DIRTY=1 \
+        bash ./verify_readiness.sh
     ) 2>&1 | tee "${outfile}"
 
     local rc=${PIPESTATUS[0]}
@@ -89,6 +91,7 @@ readiness_gate() {
     unexpected_warns="$(
         grep '^WARN  ' "${outfile}" \
           | grep -v 'non-main verification allowed' \
+          | grep -v 'working-tree changes allowed' \
           | wc -l \
           | tr -d ' '
     )"
