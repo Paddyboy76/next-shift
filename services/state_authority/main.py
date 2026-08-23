@@ -27,6 +27,11 @@ from human_reach_transition import (
     authorize_and_transition,
 )
 from identity import verified_principal
+from critique import authorize_and_record_coverage_review
+from inspection import (
+    authorize_and_get_inspection_context,
+    authorize_and_record_inspection,
+)
 from intake import authorize_and_create
 from security import (
     AuthenticationError,
@@ -98,6 +103,7 @@ def create_issue():
         _authenticated_principal()
     )
 
+
     if auth_error is not None:
         return auth_error
 
@@ -167,6 +173,51 @@ def create_issue():
         ),
         201,
     )
+
+
+@app.post("/v1/coverage-reviews")
+def coverage_review():
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
+    try:
+        record = authorize_and_record_coverage_review(principal=principal, payload=payload)
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "coverage_review_recorded", "review": record}), 201
+
+
+@app.get("/v1/issues/<issue_id>/inspection-context")
+def inspection_context(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    try:
+        result = authorize_and_get_inspection_context(principal=principal, issue_id=issue_id)
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "inspection_context", **result})
+
+
+@app.post("/v1/issues/<issue_id>/evidence-inspections")
+def evidence_inspection(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
+    try:
+        record = authorize_and_record_inspection(
+            principal=principal, issue_id=issue_id,
+            evidence_id=payload.get("evidence_id"), decision=payload.get("decision"),
+            reasons=payload.get("reasons"))
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "evidence_inspection_recorded", "inspection": record}), 201
 
 
 @app.get(

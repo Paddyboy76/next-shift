@@ -238,6 +238,27 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
         ),
     ),
     (
+        "ns-coverage-critic@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="CoverageCritic",
+        capabilities=frozenset(
+            {"coverage.review"}
+        ),
+    ),
+    (
+        "ns-evidence-inspector@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="EvidenceInspector",
+        capabilities=frozenset(
+            {
+                "evidence_inspection.read",
+                "evidence_inspection.record",
+            }
+        ),
+    ),
+    (
         "ns-human-reach@"
         + SERVICE_ACCOUNT_DOMAIN
     ): PrincipalPolicy(
@@ -332,6 +353,21 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
     ),
     "verification.close": CapabilityPolicy(
         owner="IndependentVerifier",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "coverage.review": CapabilityPolicy(
+        owner="CoverageCritic",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "evidence_inspection.read": CapabilityPolicy(
+        owner="EvidenceInspector",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "evidence_inspection.record": CapabilityPolicy(
+        owner="EvidenceInspector",
         allowed_update_fields=frozenset(),
         transitions={},
     ),

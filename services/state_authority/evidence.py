@@ -612,6 +612,12 @@ def authorize_and_close_verified_issue(
         raise error
 
     db = _db()
+    from inspection import latest_passing_inspection
+    inspection = latest_passing_inspection(db, issue_id, evidence_id.strip())
+    if inspection is None:
+        error = AuthorizationError(reason="evidence_inspection_required")
+        _deny(error, principal, VERIFICATION_CLOSE_CAPABILITY, issue_id)
+        raise error
     issue_ref = db.collection(ISSUE_COLLECTION).document(issue_id)
     evidence_ref = db.collection(EVIDENCE_COLLECTION).document(
         evidence_id.strip()

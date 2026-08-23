@@ -11,6 +11,7 @@ from completion import (
     record_trusted_completion,
     run_independent_verifier,
 )
+from critique import review_coverage
 from data import (
     dashboard_summary,
     get_issue_bundle,
@@ -295,6 +296,18 @@ def intake():
         "operations-ui:"
         + str(uuid.uuid4())
     )
+
+    try:
+        coverage_review = review_coverage(message=message, proposals=proposals, source_reference=source_reference)
+    except RuntimeError as exc:
+        return jsonify({"blocked":False,"status":"coverage_review_failed","error":"coverage_critic_failure",
+                        "message":"Independent coverage review failed; no operational work was created.",
+                        "detail":str(exc),"intake_reference":source_reference}),502
+    result["coverage_review"] = coverage_review
+    if coverage_review.get("decision") != "PASS":
+        result.update({"status":"human_review_required","issue_count":0,"issues":[],
+                       "message":"Coverage Critic disagreed with intake. No work was dispatched; the durable review requires operator attention."})
+        return jsonify(result),409
 
     analysis_message = str(
         result.get("message", "")

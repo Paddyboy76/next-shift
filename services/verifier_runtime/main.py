@@ -35,6 +35,13 @@ def _state_url() -> str:
     return value.rstrip("/")
 
 
+def _inspector_url() -> str:
+    value = os.environ.get("EVIDENCE_INSPECTOR_URL", "").strip()
+    if not value:
+        raise RuntimeError("EVIDENCE_INSPECTOR_URL is required")
+    return value.rstrip("/")
+
+
 def _token(audience: str) -> str:
     token = id_token.fetch_id_token(
         Request(),
@@ -326,6 +333,21 @@ def verify_issue(issue_id: str):
             ),
             409,
         )
+
+    inspector_url = _inspector_url()
+    inspector_response = requests.post(
+        f"{inspector_url}/v1/issues/{issue_id}/inspect",
+        headers={"Authorization": f"Bearer {_token(inspector_url)}", "Content-Type": "application/json"},
+        timeout=TIMEOUT_SECONDS,
+    )
+    if inspector_response.status_code >= 400:
+        try:
+            inspection = inspector_response.json()
+        except ValueError:
+            inspection = {"error": "invalid_inspector_response"}
+        return jsonify({"error": "evidence_inspection_failed",
+                        "message": "Independent Evidence Inspector did not approve closure.",
+                        "inspection": inspection}), 409
 
     close_response = requests.post(
         f"{state_url}/v1/issues/{issue_id}/verify",
