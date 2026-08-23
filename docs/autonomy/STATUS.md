@@ -6,7 +6,7 @@ Pre-autonomy readiness: **159 PASS / 0 WARN / 0 FAIL**
 
 | Phase | Status | Commit |
 |---|---|---|
-| 07-live-truth-audit | FAILED_READINESS | e492980 |
+| 07-live-truth-audit | COMPLETE | 2f25c76 |
 | 08-external-evidence-verification-failure | PENDING | - |
 | 09-coverage-critic-evidence-inspector | PENDING | - |
 | 10-registry-memory-otel | PENDING | - |
