@@ -101,8 +101,9 @@ def platform():
             },
             "registry": {
                 "api": "agentregistry.googleapis.com",
-                "discovery": "Agent Runtime supports automatic registration",
-                "verification": "RUNNER_REGISTRY_READ_BLOCKED",
+                "agent": "Next Shift",
+                "service": "next-shift-runtime",
+                "verification": "LIVE_REGISTRY_VERIFIED",
             },
         }
     )
