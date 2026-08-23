@@ -96,7 +96,8 @@ class RichHumanReachCardTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("URLSearchParams", deeplink)
-        self.assertIn("openIssue(issueId)", deeplink)
+        self.assertIn("openFrontlineIssue(issueId)", deeplink)
+        self.assertIn("window.openFrontlineIssue = openFrontlineIssue", deeplink)
         self.assertIn("/static/deeplink.js", template)
 
     def test_completion_claim_visibly_preserves_verification_boundary(self) -> None:
