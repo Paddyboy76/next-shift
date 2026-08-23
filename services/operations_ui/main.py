@@ -25,6 +25,12 @@ from state_authority import (
 )
 from trace import build_lifecycle_trace
 from intelligence import current_intelligence
+from spoken import (
+    MAX_AUDIO_BYTES,
+    SpokenHandoverError,
+    transcribe_spoken_handover,
+    validated_spoken_source,
+)
 
 
 app = Flask(__name__)
@@ -284,10 +290,15 @@ def intake():
         )
     )
 
-    intake_reference = (
-        "operations-ui:"
-        + str(uuid.uuid4())
-    )
+    try:
+        spoken_source = validated_spoken_source(
+            message,
+            payload.get("spoken_receipt"),
+        )
+    except ValueError as exc:
+        return jsonify({"error": "invalid_spoken_receipt", "message": str(exc)}), 400
+
+    intake_reference = spoken_source or ("operations-ui:" + str(uuid.uuid4()))
 
     result = submit_handover(
         message=message,
@@ -410,4 +421,24 @@ def intake():
         }
     )
 
+    return jsonify(result)
+
+
+@app.post("/api/spoken-handover/transcribe")
+def transcribe_handover():
+    if request.content_length and request.content_length > MAX_AUDIO_BYTES + 65536:
+        return jsonify({"error": "audio_too_large"}), 413
+    upload = request.files.get("audio")
+    if upload is None:
+        return jsonify({"error": "audio_required"}), 400
+    audio = upload.read(MAX_AUDIO_BYTES + 1)
+    try:
+        result = transcribe_spoken_handover(
+            audio=audio,
+            mime_type=upload.mimetype or "application/octet-stream",
+        )
+    except ValueError as exc:
+        return jsonify({"error": "invalid_audio", "message": str(exc)}), 400
+    except SpokenHandoverError as exc:
+        return jsonify({"error": "transcription_failed", "message": str(exc)}), 502
     return jsonify(result)

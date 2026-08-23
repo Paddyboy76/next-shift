@@ -9,6 +9,7 @@ This is not a chatbot or a dashboard wrapped around a model. The model interpret
 ## What the deployed system proves
 
 - One handover can become independent jobs for Facilities, Asset Logistics, Language Access, Discharge DME, EVS Throughput, and Patient Transport.
+- An optional spoken handover uses Gemini audio understanding to produce an editable transcript and hash-based audit receipt; the operator must review it before it enters the same governed text path.
 - A separate Gemini Coverage Critic checks proposed intake for omissions, conflation, duplicates, routing errors, and uncertainty before persistence.
 - State Authority is the mutation choke point; the specialist, coordination, evidence, verifier, critic, inspector, and recovery identities cannot write Firestore directly.
 - Owner-filtered Pub/Sub subscriptions wake dedicated Cloud Run specialists with OIDC-bound push identities, bounded retry, and dead-letter handling.
@@ -30,6 +31,8 @@ Canonical lifecycle:
 ```mermaid
 flowchart TD
     H[Messy synthetic handover] --> UI[IAP-protected Operations Control]
+    AU[Optional synthetic audio] --> GM[Gemini transcription · review required]
+    GM --> UI
     UI --> GW[Agent Gateway · CLIENT_TO_AGENT]
     GW --> MA[Model Armor · fail closed]
     MA --> AR[Vertex AI Agent Runtime · ADK]
@@ -59,7 +62,7 @@ Only State Authority owns workflow mutation, and only the verifier can request `
 - **Vertex AI Agent Runtime and Google ADK:** managed handover reasoning with managed Agent Identity.
 - **Agent Registry:** a real registered `Next Shift` agent and `next-shift-runtime` service linked to the managed runtime.
 - **Agent Gateway and Model Armor:** a bound `CLIENT_TO_AGENT` gateway with fail-closed content authorization. A repeatable live probe proves a benign request is allowed and an instruction-bypass request is denied.
-- **Gemini:** intake reasoning, independent coverage critique, and evidence-grounded operational improvement recommendations.
+- **Gemini:** optional audio transcription, intake reasoning, independent coverage critique, and evidence-grounded operational improvement recommendations.
 - **Cloud Run, IAM, and IAP:** private runtime isolation, service-specific identities, and protected operator access.
 - **Pub/Sub:** filtered asynchronous routing, OIDC push, retries, idempotency, and DLQ handling.
 - **Firestore:** sole authoritative workflow state and durable audit records.

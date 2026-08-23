@@ -10,6 +10,8 @@ In four minutes, prove that Next Shift is a governed operational fleet—not a s
 
 Show the IAP-protected Operations Control home screen.
 
+If the spoken path has been rehearsed successfully immediately before recording, record one short synthetic operational sentence, stop, and show the Gemini transcript plus audit reference. Review the text before sending. Otherwise use the prepared text directly; spoken input is optional and must never put the four-minute proof at risk.
+
 ## 0:20–0:55 — messy handover to governed work
 
 Submit one synthetic handover containing a missing wheelchair, interpreter coordination, home oxygen delivery, EVS turnaround, a leaking sink, and patient transport.

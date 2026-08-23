@@ -56,6 +56,9 @@ const refreshAlert = document.querySelector("#refresh-alert");
 let drawerOrigin = null;
 let currentOwner = "ALL";
 let cachedIssues = [];
+let spokenReceipt = null;
+let mediaRecorder = null;
+let recordedChunks = [];
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -384,13 +387,65 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
   button.disabled = true;
   status.textContent = "Processing governed intake…";
   try {
-    const response = await json("/api/intake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
+    const response = await json("/api/intake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, spoken_receipt: spokenReceipt }) });
     status.textContent = response.blocked ? `Blocked by security policy: ${response.message}` : response.message;
-    if (!response.blocked) { textarea.value = ""; setTimeout(refresh, 2000); setTimeout(refresh, 6000); }
+    if (!response.blocked) { textarea.value = ""; spokenReceipt = null; document.querySelector("#spoken-status").textContent = "Optional · Gemini transcription · review required"; setTimeout(refresh, 2000); setTimeout(refresh, 6000); }
   } catch (error) {
     status.textContent = `Intake failed: ${error.message}`;
   } finally {
     button.disabled = false;
+  }
+});
+
+document.querySelector("#handover").addEventListener("input", () => {
+  if (spokenReceipt) {
+    spokenReceipt = null;
+    document.querySelector("#spoken-status").textContent = "Transcript edited · now using stable text fallback";
+  }
+});
+
+document.querySelector("#record-handover").addEventListener("click", async () => {
+  const button = document.querySelector("#record-handover");
+  const status = document.querySelector("#spoken-status");
+  if (mediaRecorder?.state === "recording") {
+    mediaRecorder.stop();
+    button.disabled = true;
+    status.textContent = "Sending audio to Gemini…";
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    status.textContent = "Recording unavailable in this browser · text intake remains available";
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.addEventListener("dataavailable", (event) => { if (event.data.size) recordedChunks.push(event.data); });
+    mediaRecorder.addEventListener("stop", async () => {
+      stream.getTracks().forEach((track) => track.stop());
+      try {
+        const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+        const form = new FormData();
+        form.append("audio", blob, "spoken-handover.webm");
+        const result = await json("/api/spoken-handover/transcribe", { method: "POST", body: form });
+        document.querySelector("#handover").value = result.transcript;
+        spokenReceipt = result.receipt;
+        const uncertainty = result.uncertain_segments?.length ? ` · review ${result.uncertain_segments.length} uncertain segment(s)` : "";
+        status.textContent = `Gemini transcript ready · review before sending${uncertainty} · audit ${result.receipt.audit_reference}`;
+      } catch (error) {
+        spokenReceipt = null;
+        status.textContent = `Transcription failed: ${error.message} · text intake remains available`;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Record spoken handover";
+      }
+    });
+    mediaRecorder.start();
+    button.textContent = "Stop and transcribe";
+    status.textContent = "Recording synthetic non-clinical handover…";
+  } catch (error) {
+    status.textContent = `Microphone unavailable: ${error.message} · text intake remains available`;
   }
 });
 

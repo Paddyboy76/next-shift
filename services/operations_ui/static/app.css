@@ -36,6 +36,9 @@ textarea:focus,button:focus-visible,.work-row:focus-visible,.attention-card:focu
 button { cursor:pointer; border:0; border-radius:9px; padding:9px 12px; background:#42cabb; color:#041310; font-weight:800; }
 button:disabled { opacity:.55; cursor:wait; }
 #intake-status { color:#a6bfcc; font-size:11px; white-space:pre-wrap; }
+.spoken-controls { display:flex; align-items:center; gap:10px; margin-top:9px; }
+.secondary-button { border:1px solid #315867; background:#0b202b; color:#9be8df; }
+#spoken-status { color:#88a4b4; font-size:10px; overflow-wrap:anywhere; }
 
 .metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; }
 .metrics div { padding:12px; border-radius:10px; background:#091923; border:1px solid #1b3240; }

@@ -277,6 +277,9 @@ if [[ -s "${OPS_FILE}" ]]; then
     expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "RECOVERY_PLANNER_URL") | .value' "${OPS_FILE}")" \
         "https://next-shift-recovery-planner-mycnigy7dq-as.a.run.app" \
         "Operations uses the controlled Recovery Planner"
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "SPOKEN_HANDOVER_MODEL") | .value' "${OPS_FILE}")" \
+        "gemini-2.5-flash" \
+        "Operations uses Gemini spoken handover transcription"
 fi
 
 VERIFIER_FILE="${TMP_DIR}/next-shift-verifier.json"
