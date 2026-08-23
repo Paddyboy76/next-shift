@@ -11,6 +11,7 @@ from evidence import (
     authorize_and_close_verified_issue,
     authorize_and_get_verification_context,
     authorize_and_record_evidence,
+    authorize_and_reject_verification,
 )
 from human_reach import (
     authorize_and_mark_delivered,
@@ -25,7 +26,15 @@ from human_reach_privacy import (
 from human_reach_transition import (
     authorize_and_transition,
 )
+from recovery import recovery_context as get_recovery_context
+from recovery import record_plan as persist_recovery_plan
+from recovery import sanction_plan as approve_recovery_plan
 from identity import verified_principal
+from critique import authorize_and_record_coverage_review
+from inspection import (
+    authorize_and_get_inspection_context,
+    authorize_and_record_inspection,
+)
 from intake import authorize_and_create
 from security import (
     AuthenticationError,
@@ -91,11 +100,50 @@ def health():
     )
 
 
+@app.get("/v1/issues/<issue_id>/recovery-context")
+def recovery_context_route(issue_id: str):
+    try:
+        result = get_recovery_context(principal=_principal(), issue_id=issue_id)
+    except AuthenticationError:
+        return jsonify({"error": "authentication_required"}), 401
+    except AuthorizationError as error:
+        return jsonify({"error": error.reason, "details": error.details}), 403
+    return jsonify(result)
+
+
+@app.post("/v1/issues/<issue_id>/recovery-plans")
+def recovery_plan_route(issue_id: str):
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
+    try:
+        result = persist_recovery_plan(principal=_principal(), issue_id=issue_id,
+                                       proposal=payload)
+    except AuthenticationError:
+        return jsonify({"error": "authentication_required"}), 401
+    except AuthorizationError as error:
+        return jsonify({"error": error.reason, "details": error.details}), 403
+    return jsonify({"status": "recovery_plan_proposed", "plan": result}), 201
+
+
+@app.post("/v1/issues/<issue_id>/recovery-plans/<plan_id>/sanction")
+def recovery_sanction_route(issue_id: str, plan_id: str):
+    try:
+        result = approve_recovery_plan(principal=_principal(), issue_id=issue_id,
+                                       plan_id=plan_id)
+    except AuthenticationError:
+        return jsonify({"error": "authentication_required"}), 401
+    except AuthorizationError as error:
+        return jsonify({"error": error.reason, "details": error.details}), 403
+    return jsonify({"status": "recovery_plan_sanctioned", "plan": result})
+
+
 @app.post("/v1/issues")
 def create_issue():
     principal, auth_error = (
         _authenticated_principal()
     )
+
 
     if auth_error is not None:
         return auth_error
@@ -166,6 +214,51 @@ def create_issue():
         ),
         201,
     )
+
+
+@app.post("/v1/coverage-reviews")
+def coverage_review():
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
+    try:
+        record = authorize_and_record_coverage_review(principal=principal, payload=payload)
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "coverage_review_recorded", "review": record}), 201
+
+
+@app.get("/v1/issues/<issue_id>/inspection-context")
+def inspection_context(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    try:
+        result = authorize_and_get_inspection_context(principal=principal, issue_id=issue_id)
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "inspection_context", **result})
+
+
+@app.post("/v1/issues/<issue_id>/evidence-inspections")
+def evidence_inspection(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
+    try:
+        record = authorize_and_record_inspection(
+            principal=principal, issue_id=issue_id,
+            evidence_id=payload.get("evidence_id"), decision=payload.get("decision"),
+            reasons=payload.get("reasons"))
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+    return jsonify({"status": "evidence_inspection_recorded", "inspection": record}), 201
 
 
 @app.get(
@@ -461,6 +554,36 @@ def verify_issue(
             ),
         }
     )
+
+
+@app.post("/v1/issues/<issue_id>/verification-rejection")
+def reject_verification(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("reason"), str):
+        return jsonify({"error": "invalid_request"}), 400
+
+    try:
+        result = authorize_and_reject_verification(
+            principal=principal,
+            issue_id=issue_id,
+            reason=payload["reason"],
+            evidence_id=payload.get("evidence_id"),
+        )
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+
+    return jsonify({
+        "status": "verification_rejected",
+        "issue_id": issue_id,
+        "state": "ACTION_PENDING",
+        "owner": result["owner"],
+        "verification_attempt": result["attempt"],
+        "transition_event_id": result["transition_event_id"],
+    }), 201
 
 
 @app.post(

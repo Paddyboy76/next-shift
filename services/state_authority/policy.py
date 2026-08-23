@@ -158,7 +158,7 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
     ): PrincipalPolicy(
         owner="Intake",
         capabilities=frozenset(
-            {"intake.create"}
+            {"intake.create", "recovery.sanction"}
         ),
     ),
     (
@@ -231,8 +231,30 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
         owner="IndependentVerifier",
         capabilities=frozenset(
             {
-                "verification.read",
-                "verification.close",
+            "verification.read",
+            "verification.close",
+            "verification.reject",
+            }
+        ),
+    ),
+    (
+        "ns-coverage-critic@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="CoverageCritic",
+        capabilities=frozenset(
+            {"coverage.review", "recovery.read", "recovery.plan"}
+        ),
+    ),
+    (
+        "ns-evidence-inspector@"
+        + SERVICE_ACCOUNT_DOMAIN
+    ): PrincipalPolicy(
+        owner="EvidenceInspector",
+        capabilities=frozenset(
+            {
+                "evidence_inspection.read",
+                "evidence_inspection.record",
             }
         ),
     ),
@@ -334,6 +356,21 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
         allowed_update_fields=frozenset(),
         transitions={},
     ),
+    "coverage.review": CapabilityPolicy(
+        owner="CoverageCritic",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "evidence_inspection.read": CapabilityPolicy(
+        owner="EvidenceInspector",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "evidence_inspection.record": CapabilityPolicy(
+        owner="EvidenceInspector",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
     "human_reach.read_delivery": CapabilityPolicy(
         owner="HumanReach",
         allowed_update_fields=frozenset(),
@@ -341,6 +378,21 @@ CAPABILITY_POLICIES: dict[str, CapabilityPolicy] = {
     ),
     "human_reach.delivery_update": CapabilityPolicy(
         owner="HumanReach",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.read": CapabilityPolicy(
+        owner="RecoveryPlanner",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.plan": CapabilityPolicy(
+        owner="RecoveryPlanner",
+        allowed_update_fields=frozenset(),
+        transitions={},
+    ),
+    "recovery.sanction": CapabilityPolicy(
+        owner="Intake",
         allowed_update_fields=frozenset(),
         transitions={},
     ),

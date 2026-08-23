@@ -70,6 +70,18 @@ class LifecycleTraceTests(unittest.TestCase):
                     "details": {"status": "ARRIVED"},
                 }
             ],
+            "verification_attempts": [
+                {
+                    "id": "attempt-1",
+                    "decision": "REJECTED",
+                    "reason": "stale_evidence",
+                    "evidence_id": "evidence-old",
+                    "verifier": "ns-verifier@example",
+                    "created_at": "2026-08-22T09:01:50+00:00",
+                    "recoverable": True,
+                    "recovery_state": "ACTION_PENDING",
+                }
+            ],
         }
 
         trace = build_lifecycle_trace(bundle)
@@ -85,6 +97,7 @@ class LifecycleTraceTests(unittest.TestCase):
         self.assertIn("HUMAN_REACH", stages)
         self.assertIn("EVIDENCE", stages)
         self.assertIn("VERIFIER", stages)
+        self.assertIn("VERIFICATION_FAILURE", stages)
 
         identifiers = {
             key: value
@@ -94,6 +107,7 @@ class LifecycleTraceTests(unittest.TestCase):
         self.assertEqual(identifiers["handover_event_id"], "event-1")
         self.assertEqual(identifiers["human_reach_event_id"], "hr-event-1")
         self.assertEqual(identifiers["evidence_id"], "evidence-1")
+        self.assertEqual(identifiers["verification_attempt_id"], "attempt-1")
 
     def test_trace_template_renders_items_list(self) -> None:
         template_dir = (

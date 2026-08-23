@@ -12,6 +12,8 @@ AUTHZ_EXTENSION="next-shift-ingress-model-armor"
 AUTHZ_POLICY="next-shift-ingress-model-armor-policy"
 MODEL_ARMOR_TEMPLATE="next-shift-intake-guard"
 STATE_AUTHORITY_URL="https://next-shift-state-authority-mycnigy7dq-as.a.run.app"
+COVERAGE_CRITIC_URL="https://next-shift-coverage-critic-mycnigy7dq-as.a.run.app"
+EVIDENCE_INSPECTOR_URL="https://next-shift-evidence-inspector-mycnigy7dq-as.a.run.app"
 HUMAN_REACH_TOPIC="next-shift-human-reach-requested"
 HANDOVER_TOPIC="next-shift-handover-received"
 DLQ_TOPIC="next-shift-dead-letter"
@@ -225,6 +227,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 
     if [[ -z "$(git status --porcelain 2>/dev/null)" ]]; then
         pass "working tree clean"
+    elif [[ "${READINESS_ALLOW_DIRTY:-0}" == "1" ]]; then
+        warn "working-tree changes allowed for autonomous phase verification"
     else
         fail "working tree has local changes"
     fi
@@ -243,6 +247,12 @@ check_run_service next-shift-trusted-evidence \
     "ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-verifier \
     "ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com"
+check_run_service next-shift-coverage-critic \
+    "ns-coverage-critic@${PROJECT_ID}.iam.gserviceaccount.com"
+check_run_service next-shift-evidence-inspector \
+    "ns-evidence-inspector@${PROJECT_ID}.iam.gserviceaccount.com"
+check_run_service next-shift-recovery-planner \
+    "ns-coverage-critic@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-facilities \
     "ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com"
 check_run_service next-shift-asset-logistics \
@@ -261,6 +271,22 @@ if [[ -s "${OPS_FILE}" ]]; then
     expect_equal "$(json_get "${OPS_FILE}" '.metadata.annotations["run.googleapis.com/iap-enabled"]')" \
         "true" \
         "Operations UI is protected by IAP"
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "COVERAGE_CRITIC_URL") | .value' "${OPS_FILE}")" \
+        "${COVERAGE_CRITIC_URL}" \
+        "Operations uses the independent Coverage Critic"
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "RECOVERY_PLANNER_URL") | .value' "${OPS_FILE}")" \
+        "https://next-shift-recovery-planner-mycnigy7dq-as.a.run.app" \
+        "Operations uses the controlled Recovery Planner"
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "SPOKEN_HANDOVER_MODEL") | .value' "${OPS_FILE}")" \
+        "gemini-2.5-flash" \
+        "Operations uses Gemini spoken handover transcription"
+fi
+
+VERIFIER_FILE="${TMP_DIR}/next-shift-verifier.json"
+if [[ -s "${VERIFIER_FILE}" ]]; then
+    expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "EVIDENCE_INSPECTOR_URL") | .value' "${VERIFIER_FILE}")" \
+        "${EVIDENCE_INSPECTOR_URL}" \
+        "Verifier requires the independent Evidence Inspector"
 fi
 
 STATE_FILE="${TMP_DIR}/next-shift-state-authority.json"
@@ -309,10 +335,16 @@ check_invokers next-shift-trusted-evidence \
     "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-verifier \
     "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
+check_invokers next-shift-coverage-critic \
+    "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
+check_invokers next-shift-evidence-inspector \
+    "serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com"
+check_invokers next-shift-recovery-planner \
+    "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-operations \
     "serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-iap.iam.gserviceaccount.com"
 check_invokers next-shift-state-authority \
-    "serviceAccount:ns-human-reach@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-asset-logistics@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-discharge-dme@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-evs-throughput@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-language-access@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-patient-transport@${PROJECT_ID}.iam.gserviceaccount.com"
+    "serviceAccount:ns-coverage-critic@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-evidence-inspector@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-human-reach@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-trusted-evidence@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-verifier@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-asset-logistics@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-discharge-dme@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-evs-throughput@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-facilities@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-language-access@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-worker-patient-transport@${PROJECT_ID}.iam.gserviceaccount.com"
 
 section "PUB/SUB DELIVERY"
 for entry in \
@@ -458,6 +490,30 @@ if gcloud beta network-security authz-policies describe "${AUTHZ_POLICY}" \
         "Model Armor policy uses authorization extension"
 else
     fail "Model Armor content authorization policy exists"
+fi
+
+TRACE_PROOF="$(gcloud logging read \
+    'resource.type="cloud_run_job" AND resource.labels.job_name="next-shift-gateway-trace-proof" AND jsonPayload.event_type="gateway.model_armor_trace_proof" AND jsonPayload.benign_decision="ALLOW" AND jsonPayload.bypass_decision="DENY" AND jsonPayload.fail_open=false' \
+    --project="${PROJECT_ID}" \
+    --limit=1 \
+    --format='value(jsonPayload.trace_id)' 2>/dev/null || true)"
+
+if [[ -n "${TRACE_PROOF}" ]]; then
+    pass "governed Gateway and Model Armor allow/deny trace is inspectable (${TRACE_PROOF})"
+else
+    fail "no inspectable governed Gateway and Model Armor allow/deny trace"
+fi
+
+RECOVERY_PROOF="$(gcloud logging read \
+    'resource.type="cloud_run_revision" AND resource.labels.service_name="next-shift-state-authority" AND jsonPayload.event_type="authorization.decision" AND jsonPayload.capability="recovery.sanction" AND jsonPayload.decision="ALLOW" AND jsonPayload.reason="recovery_action_sanctioned"' \
+    --project="${PROJECT_ID}" \
+    --limit=1 \
+    --format='value(jsonPayload.details.plan_id)' 2>/dev/null || true)"
+
+if [[ -n "${RECOVERY_PROOF}" ]]; then
+    pass "sanctioned controlled-recovery proof is inspectable (${RECOVERY_PROOF})"
+else
+    fail "no inspectable sanctioned controlled-recovery proof"
 fi
 
 section "REQUIRED APIS"

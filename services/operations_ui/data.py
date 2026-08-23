@@ -17,6 +17,8 @@ EVIDENCE = "issue_evidence"
 TRANSITIONS = "issue_transition_events"
 SHIFTS = "shift_snapshots"
 HUMAN_REACH = "human_reach_deliveries"
+VERIFICATION_ATTEMPTS = "verification_attempts"
+RECOVERY_PLANS = "recovery_plans"
 
 
 def _db() -> firestore.Client:
@@ -192,6 +194,22 @@ def get_issue_bundle(
         )
     ]
 
+    verification_attempts = [
+        _serialize(item.to_dict())
+        for item in (
+            db.collection(VERIFICATION_ATTEMPTS)
+            .where(filter=FieldFilter("issue_id", "==", issue_id))
+            .stream()
+        )
+    ]
+
+    recovery_plans = [
+        _serialize(item.to_dict())
+        for item in db.collection(RECOVERY_PLANS).where(
+            filter=FieldFilter("issue_id", "==", issue_id)
+        ).stream()
+    ]
+
     human_reach_snapshot = (
         db
         .collection(HUMAN_REACH)
@@ -216,11 +234,15 @@ def get_issue_bundle(
         key=_time_key,
         reverse=True,
     )
+    verification_attempts.sort(key=_time_key, reverse=True)
+    recovery_plans.sort(key=_time_key, reverse=True)
 
     return {
         "issue": issue,
         "evidence": evidence,
         "transitions": transitions,
+        "verification_attempts": verification_attempts,
+        "recovery_plans": recovery_plans,
         "human_reach": human_reach,
     }
 

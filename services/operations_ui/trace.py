@@ -43,6 +43,8 @@ def build_lifecycle_trace(
     transitions = list(bundle.get("transitions") or [])
     evidence = list(bundle.get("evidence") or [])
     human_reach = bundle.get("human_reach") or None
+    verification_attempts = list(bundle.get("verification_attempts") or [])
+    recovery_plans = list(bundle.get("recovery_plans") or [])
 
     issue_id = _text(issue.get("id"))
     owner = _text(issue.get("owner"))
@@ -87,6 +89,8 @@ def build_lifecycle_trace(
             stage = "EVIDENCE"
         elif capability == "verification.close":
             stage = "VERIFIER"
+        elif capability == "verification.reject":
+            stage = "VERIFICATION_FAILURE"
 
         items.append(
             _event(
@@ -184,10 +188,49 @@ def build_lifecycle_trace(
                     "source": item.get("source"),
                     "subject": item.get("subject"),
                     "verified_by": item.get("verified_by"),
+                    "schema_version": item.get("schema_version"),
+                    "provenance_authority": (item.get("provenance") or {}).get("authority"),
+                    "observation_mode": (item.get("provenance") or {}).get("observation_mode"),
+                    "observed_at": (item.get("provenance") or {}).get("observed_at"),
                 },
                 detail=_text(item.get("details")),
             )
         )
+
+    for attempt in verification_attempts:
+        items.append(_event(
+            stage="VERIFICATION_FAILURE",
+            title="Independent verification rejected",
+            at=attempt.get("created_at"),
+            actor=attempt.get("verifier"),
+            authority="State Authority",
+            status="RECOVERABLE",
+            identifiers={
+                "verification_attempt_id": attempt.get("id"),
+                "evidence_id": attempt.get("evidence_id"),
+                "recovery_state": attempt.get("recovery_state"),
+            },
+            detail=(
+                f"Reason: {_text(attempt.get('reason'))}. "
+                "No closure occurred; work returned for new trusted evidence."
+            ),
+        ))
+
+    for plan in recovery_plans:
+        items.append(_event(
+            stage="CONTROLLED_RECOVERY",
+            title=f"Recovery plan {str(plan.get('status', 'PROPOSED')).lower()}",
+            at=plan.get("sanctioned_at") or plan.get("created_at"),
+            actor=plan.get("sanctioned_by") or plan.get("planner"),
+            authority="State Authority",
+            status=_text(plan.get("status")),
+            identifiers={"recovery_plan_id": plan.get("id"),
+                         "recommended_action": plan.get("recommended_action"),
+                         "state_observed": plan.get("state_observed")},
+            detail=(f"Failure: {_text(plan.get('failure_reason'))}. "
+                    f"{_text(plan.get('recommendation'))} Boundary: "
+                    f"{_text(plan.get('authority_boundary'))}."),
+        ))
 
     items.sort(key=lambda item: item.get("at") or "")
 

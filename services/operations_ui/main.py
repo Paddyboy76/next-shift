@@ -4,6 +4,7 @@ import uuid
 
 from flask import Flask
 from flask import jsonify
+from recovery import create_plan, sanction_plan
 from flask import render_template
 from flask import request
 
@@ -11,6 +12,7 @@ from completion import (
     record_trusted_completion,
     run_independent_verifier,
 )
+from critique import review_coverage
 from data import (
     dashboard_summary,
     get_issue_bundle,
@@ -22,6 +24,13 @@ from state_authority import (
     persist_handover_proposals,
 )
 from trace import build_lifecycle_trace
+from intelligence import current_intelligence
+from spoken import (
+    MAX_AUDIO_BYTES,
+    SpokenHandoverError,
+    transcribe_spoken_handover,
+    validated_spoken_source,
+)
 
 
 app = Flask(__name__)
@@ -75,6 +84,35 @@ def health():
 def summary():
     return jsonify(
         dashboard_summary()
+    )
+
+
+@app.get("/api/intelligence")
+def intelligence():
+    return jsonify(current_intelligence())
+
+
+@app.get("/api/platform")
+def platform():
+    return jsonify(
+        {
+            "agent_runtime": {
+                "resource": "projects/963749706976/locations/asia-southeast1/reasoningEngines/8140616966286082048",
+                "framework": "google-adk",
+                "identity": "AGENT_IDENTITY",
+                "lifecycle": "DEPLOYED",
+            },
+            "observability": {
+                "provider": "Cloud Run request tracing",
+                "export": "Cloud Logging trace and span correlation",
+            },
+            "registry": {
+                "api": "agentregistry.googleapis.com",
+                "agent": "Next Shift",
+                "service": "next-shift-runtime",
+                "verification": "LIVE_REGISTRY_VERIFIED",
+            },
+        }
     )
 
 
@@ -173,6 +211,22 @@ def verify_issue(
     return jsonify(result)
 
 
+@app.post("/api/issues/<issue_id>/recovery-plan")
+def recovery_plan(issue_id: str):
+    try:
+        return jsonify(create_plan(issue_id)), 201
+    except RuntimeError as exc:
+        return jsonify({"error": "recovery_planning_failed", "message": str(exc)}), 502
+
+
+@app.post("/api/issues/<issue_id>/recovery-plans/<plan_id>/sanction")
+def recovery_plan_sanction(issue_id: str, plan_id: str):
+    try:
+        return jsonify(sanction_plan(issue_id, plan_id))
+    except RuntimeError as exc:
+        return jsonify({"error": "recovery_sanction_failed", "message": str(exc)}), 502
+
+
 @app.get("/api/shifts")
 def shifts():
     return jsonify(
@@ -236,9 +290,20 @@ def intake():
         )
     )
 
+    try:
+        spoken_source = validated_spoken_source(
+            message,
+            payload.get("spoken_receipt"),
+        )
+    except ValueError as exc:
+        return jsonify({"error": "invalid_spoken_receipt", "message": str(exc)}), 400
+
+    intake_reference = spoken_source or ("operations-ui:" + str(uuid.uuid4()))
+
     result = submit_handover(
         message=message,
         user_id=authenticated_user,
+        request_id=intake_reference,
     )
 
     if result.get("blocked") is True:
@@ -291,10 +356,19 @@ def intake():
         result["issues"] = []
         return jsonify(result)
 
-    source_reference = (
-        "operations-ui:"
-        + str(uuid.uuid4())
-    )
+    source_reference = intake_reference
+
+    try:
+        coverage_review = review_coverage(message=message, proposals=proposals, source_reference=source_reference)
+    except RuntimeError as exc:
+        return jsonify({"blocked":False,"status":"coverage_review_failed","error":"coverage_critic_failure",
+                        "message":"Independent coverage review failed; no operational work was created.",
+                        "detail":str(exc),"intake_reference":source_reference}),502
+    result["coverage_review"] = coverage_review
+    if coverage_review.get("decision") != "PASS":
+        result.update({"status":"human_review_required","issue_count":0,"issues":[],
+                       "message":"Coverage Critic disagreed with intake. No work was dispatched; the durable review requires operator attention."})
+        return jsonify(result),409
 
     analysis_message = str(
         result.get("message", "")
@@ -347,4 +421,24 @@ def intake():
         }
     )
 
+    return jsonify(result)
+
+
+@app.post("/api/spoken-handover/transcribe")
+def transcribe_handover():
+    if request.content_length and request.content_length > MAX_AUDIO_BYTES + 65536:
+        return jsonify({"error": "audio_too_large"}), 413
+    upload = request.files.get("audio")
+    if upload is None:
+        return jsonify({"error": "audio_required"}), 400
+    audio = upload.read(MAX_AUDIO_BYTES + 1)
+    try:
+        result = transcribe_spoken_handover(
+            audio=audio,
+            mime_type=upload.mimetype or "application/octet-stream",
+        )
+    except ValueError as exc:
+        return jsonify({"error": "invalid_audio", "message": str(exc)}), 400
+    except SpokenHandoverError as exc:
+        return jsonify({"error": "transcription_failed", "message": str(exc)}), 502
     return jsonify(result)

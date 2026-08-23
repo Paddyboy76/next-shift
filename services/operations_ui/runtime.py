@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any
 
 import google.auth
@@ -240,6 +241,7 @@ def submit_handover(
     *,
     message: str,
     user_id: str,
+    request_id: str,
 ) -> dict[str, Any]:
     response = requests.post(
         STREAM_URL,
@@ -259,6 +261,37 @@ def submit_handover(
         stream=True,
     )
 
+    security_trace = {
+        "event_type": "gateway.model_armor_decision",
+        "request_id": request_id,
+        "operational_request": "handover_intake",
+        "caller": user_id,
+        "gateway": "next-shift-ingress",
+        "gateway_path": "CLIENT_TO_AGENT",
+        "policy": "next-shift-ingress-model-armor-policy",
+        "template": "next-shift-intake-guard",
+        "runtime": REASONING_ENGINE_ID,
+        "http_status": response.status_code,
+        "decision": (
+            "DENY"
+            if response.status_code == 403
+            else (
+                "ALLOW"
+                if response.status_code < 400
+                else "ERROR"
+            )
+        ),
+    }
+    print(
+        json.dumps(
+            security_trace,
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        file=sys.stdout,
+        flush=True,
+    )
+
     if response.status_code == 403:
         return {
             "blocked": True,
@@ -269,6 +302,7 @@ def submit_handover(
             "structured_output": True,
             "proposals": [],
             "rejected_clinical_requests": [],
+            "security_trace": security_trace,
         }
 
     response.raise_for_status()
