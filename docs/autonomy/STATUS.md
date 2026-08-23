@@ -14,5 +14,5 @@ Pre-autonomy readiness: **159 PASS / 0 WARN / 0 FAIL**
 | 12-recovery-planner | COMPLETE | 22fda09 |
 | 13-reproducibility-submission | COMPLETE | 9b46167 |
 | 14-spoken-handover | COMPLETE | f735558 |
-| 15-four-minute-demo-public-bonus | PENDING | - |
+| 15-four-minute-demo-public-bonus | COMPLETE | 8dd56c6 |
 | 99-final-acceptance-freeze | PENDING | - |

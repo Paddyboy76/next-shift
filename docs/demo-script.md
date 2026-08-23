@@ -10,11 +10,13 @@ In four minutes, prove that Next Shift is a governed operational fleet—not a s
 
 Show the IAP-protected Operations Control home screen.
 
+Point once to the visible `Interpret → Route → Execute → Prove → Verify` chain. It is the structure of the demonstration, not a simulated progress indicator.
+
 If the spoken path has been rehearsed successfully immediately before recording, record one short synthetic operational sentence, stop, and show the Gemini transcript plus audit reference. Review the text before sending. Otherwise use the prepared text directly; spoken input is optional and must never put the four-minute proof at risk.
 
 ## 0:20–0:55 — messy handover to governed work
 
-Submit one synthetic handover containing a missing wheelchair, interpreter coordination, home oxygen delivery, EVS turnaround, a leaking sink, and patient transport.
+Click **Load six-team synthetic handover**, review the prepared non-clinical text, then submit it. The button only fills the text box; submission still traverses the real governed path. The handover contains a missing wheelchair, interpreter coordination, home oxygen delivery, EVS turnaround, a leaking sink, and patient transport.
 
 “The managed Agent Runtime decomposes one messy note into six typed proposals. A separate Gemini Coverage Critic checks for omissions, duplication, conflation, uncertainty, and routing errors. Only then does State Authority create durable Firestore work.”
 

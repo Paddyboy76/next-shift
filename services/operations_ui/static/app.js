@@ -60,6 +60,8 @@ let spokenReceipt = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 
+const publicDemoHandover = "Synthetic night-shift handover for Tower 4: a standard wheelchair is missing from the Level 3 lift lobby. A Spanish interpreter is needed in Room 402. Home oxygen delivery to the synthetic discharge lounge is still pending. Room 418 needs EVS turnaround. The sink in Room 406 is leaking. Patient transport is waiting to move a guest from the discharge lounge to the north entrance.";
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -395,6 +397,15 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
   } finally {
     button.disabled = false;
   }
+});
+
+document.querySelector("#load-demo-handover").addEventListener("click", () => {
+  const textarea = document.querySelector("#handover");
+  textarea.value = publicDemoHandover;
+  spokenReceipt = null;
+  document.querySelector("#spoken-status").textContent = "Prepared synthetic text · review before sending";
+  document.querySelector("#intake-status").textContent = "Six operational teams represented · submission still uses the governed live path";
+  textarea.focus();
 });
 
 document.querySelector("#handover").addEventListener("input", () => {
