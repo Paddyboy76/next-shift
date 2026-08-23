@@ -231,8 +231,9 @@ PRINCIPAL_POLICIES: dict[str, PrincipalPolicy] = {
         owner="IndependentVerifier",
         capabilities=frozenset(
             {
-                "verification.read",
-                "verification.close",
+            "verification.read",
+            "verification.close",
+            "verification.reject",
             }
         ),
     ),

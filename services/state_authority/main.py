@@ -11,6 +11,7 @@ from evidence import (
     authorize_and_close_verified_issue,
     authorize_and_get_verification_context,
     authorize_and_record_evidence,
+    authorize_and_reject_verification,
 )
 from human_reach import (
     authorize_and_mark_delivered,
@@ -461,6 +462,36 @@ def verify_issue(
             ),
         }
     )
+
+
+@app.post("/v1/issues/<issue_id>/verification-rejection")
+def reject_verification(issue_id: str):
+    principal, auth_error = _authenticated_principal()
+    if auth_error is not None:
+        return auth_error
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("reason"), str):
+        return jsonify({"error": "invalid_request"}), 400
+
+    try:
+        result = authorize_and_reject_verification(
+            principal=principal,
+            issue_id=issue_id,
+            reason=payload["reason"],
+            evidence_id=payload.get("evidence_id"),
+        )
+    except AuthorizationError:
+        return jsonify({"error": "not_authorized"}), 403
+
+    return jsonify({
+        "status": "verification_rejected",
+        "issue_id": issue_id,
+        "state": "ACTION_PENDING",
+        "owner": result["owner"],
+        "verification_attempt": result["attempt"],
+        "transition_event_id": result["transition_event_id"],
+    }), 201
 
 
 @app.post(

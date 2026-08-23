@@ -18,6 +18,7 @@ OPERATIONS_SERVICE="next-shift-operations"
 OPERATIONS_SA="ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 BUILDER_SA="ns-cloud-run-builder@${PROJECT_ID}.iam.gserviceaccount.com"
 TOPIC="next-shift-handover-received"
+HUMAN_REACH_TOPIC="next-shift-human-reach-requested"
 
 STATE_DIR="${REPO}/services/state_authority"
 EVIDENCE_DIR="${REPO}/services/evidence_runtime"
@@ -112,7 +113,7 @@ gcloud run deploy "${STATE_SERVICE}" \
     --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILDER_SA}" \
     --service-account="${STATE_SA}" \
     --no-allow-unauthenticated \
-    --set-env-vars="STATE_AUTHORITY_AUDIENCE=${STATE_URL}" \
+    --set-env-vars="STATE_AUTHORITY_AUDIENCE=${STATE_URL},HUMAN_REACH_TOPIC=${HUMAN_REACH_TOPIC}" \
     --quiet
 
 STATE_URL="$(

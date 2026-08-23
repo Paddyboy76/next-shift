@@ -1,7 +1,8 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from services.verifier_runtime.main import _matches
+from services.verifier_runtime.main import _matches, _rejection_reason
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,31 @@ DEPLOY = ROOT / "deploy_verification_path.sh"
 
 
 class FortifiedVerificationPathTests(unittest.TestCase):
+    @staticmethod
+    def _with_provenance(issue, evidence, *, observed_at=None):
+        at = observed_at or datetime.now(timezone.utc).isoformat()
+        issue = {"id": "issue-1", **issue}
+        evidence = {
+            "id": "evidence-1",
+            "issue_id": "issue-1",
+            "owner": issue["owner"],
+            "schema_version": "1.0",
+            "recorded_by": (
+                "ns-trusted-evidence@next-shift-506004.iam.gserviceaccount.com"
+            ),
+            "created_at": at,
+            **evidence,
+        }
+        evidence["provenance"] = {
+            "authority": "state_authority",
+            "issuer": evidence["recorded_by"],
+            "integration": evidence["source"],
+            "observation_mode": "synthetic_external_system",
+            "observed_at": at,
+            "workflow_state_observed": "ACTION_PENDING",
+        }
+        return issue, evidence
+
     def test_state_authority_owns_evidence_and_closure(self) -> None:
         main = STATE_MAIN.read_text(encoding="utf-8")
         evidence = STATE_EVIDENCE.read_text(encoding="utf-8")
@@ -240,6 +266,7 @@ class FortifiedVerificationPathTests(unittest.TestCase):
 
         for issue, evidence in cases:
             with self.subTest(owner=issue["owner"]):
+                issue, evidence = self._with_provenance(issue, evidence)
                 self.assertTrue(
                     _matches(issue, evidence)
                 )
@@ -259,10 +286,67 @@ class FortifiedVerificationPathTests(unittest.TestCase):
                 "status": "PRESENT",
             },
         }
+        issue, evidence = self._with_provenance(issue, evidence)
 
         self.assertFalse(
             _matches(issue, evidence)
         )
+        self.assertEqual(
+            _rejection_reason(issue, evidence),
+            "wrong_capability_evidence",
+        )
+
+    def test_specialist_claim_or_missing_evidence_cannot_match(self) -> None:
+        issue = {
+            "id": "issue-1",
+            "owner": "AssetLogistics",
+            "assigned_asset_id": "WC-041",
+            "dispatch_destination": "Room 512",
+        }
+        specialist_claim = {
+            "issue_id": "issue-1",
+            "owner": "AssetLogistics",
+            "evidence_type": "asset_arrival",
+            "source": "synthetic_rtls",
+            "subject": "WC-041",
+            "details": {"location": "Room 512", "status": "PRESENT"},
+            "recorded_by": "ns-worker-asset-logistics@example",
+        }
+        self.assertFalse(_matches(issue, specialist_claim))
+        self.assertEqual(
+            _rejection_reason(issue, specialist_claim),
+            "untrusted_evidence_provenance",
+        )
+
+    def test_stale_and_malformed_evidence_cannot_match(self) -> None:
+        issue = {
+            "owner": "Facilities",
+            "facilities_work_order_id": "FAC-ABCDEF12",
+            "facilities_location": "Room 512",
+        }
+        evidence = {
+            "evidence_type": "facilities_repair_complete",
+            "source": "synthetic_facilities_system",
+            "subject": "FAC-ABCDEF12",
+            "details": {"location": "Room 512", "status": "REPAIRED"},
+        }
+        stale_at = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+        issue, stale = self._with_provenance(issue, evidence, observed_at=stale_at)
+        self.assertEqual(_rejection_reason(issue, stale), "stale_evidence")
+
+        malformed = dict(stale)
+        malformed["created_at"] = "not-a-timestamp"
+        self.assertEqual(_rejection_reason(issue, malformed), "malformed_evidence")
+
+    def test_verification_rejection_is_authoritative_and_recoverable(self) -> None:
+        state = STATE_EVIDENCE.read_text(encoding="utf-8")
+        main = STATE_MAIN.read_text(encoding="utf-8")
+        self.assertIn("verification_attempts", state)
+        self.assertIn('"recoverable": True', state)
+        self.assertIn('"recovery_state": "ACTION_PENDING"', state)
+        self.assertIn('"from": "VERIFYING"', state)
+        self.assertIn('"to": "ACTION_PENDING"', state)
+        self.assertIn("verification-rejection", main)
 
 
 if __name__ == "__main__":
