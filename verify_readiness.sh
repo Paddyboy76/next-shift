@@ -482,6 +482,18 @@ else
     fail "Model Armor content authorization policy exists"
 fi
 
+TRACE_PROOF="$(gcloud logging read \
+    'resource.type="cloud_run_job" AND resource.labels.job_name="next-shift-gateway-trace-proof" AND jsonPayload.event_type="gateway.model_armor_trace_proof" AND jsonPayload.benign_decision="ALLOW" AND jsonPayload.bypass_decision="DENY" AND jsonPayload.fail_open=false' \
+    --project="${PROJECT_ID}" \
+    --limit=1 \
+    --format='value(jsonPayload.trace_id)' 2>/dev/null || true)"
+
+if [[ -n "${TRACE_PROOF}" ]]; then
+    pass "governed Gateway and Model Armor allow/deny trace is inspectable (${TRACE_PROOF})"
+else
+    fail "no inspectable governed Gateway and Model Armor allow/deny trace"
+fi
+
 section "REQUIRED APIS"
 for api in \
     aiplatform.googleapis.com \

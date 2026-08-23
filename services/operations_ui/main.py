@@ -267,9 +267,15 @@ def intake():
         )
     )
 
+    intake_reference = (
+        "operations-ui:"
+        + str(uuid.uuid4())
+    )
+
     result = submit_handover(
         message=message,
         user_id=authenticated_user,
+        request_id=intake_reference,
     )
 
     if result.get("blocked") is True:
@@ -322,10 +328,7 @@ def intake():
         result["issues"] = []
         return jsonify(result)
 
-    source_reference = (
-        "operations-ui:"
-        + str(uuid.uuid4())
-    )
+    source_reference = intake_reference
 
     try:
         coverage_review = review_coverage(message=message, proposals=proposals, source_reference=source_reference)
