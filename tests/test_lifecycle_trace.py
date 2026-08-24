@@ -109,7 +109,7 @@ class LifecycleTraceTests(unittest.TestCase):
         self.assertEqual(identifiers["evidence_id"], "evidence-1")
         self.assertEqual(identifiers["verification_attempt_id"], "attempt-1")
 
-    def test_trace_template_renders_items_list(self) -> None:
+    def test_trace_template_keeps_truth_but_presents_plain_language(self) -> None:
         template_dir = (
             Path(__file__).resolve().parents[1]
             / "services"
@@ -146,8 +146,12 @@ class LifecycleTraceTests(unittest.TestCase):
             error=None,
         )
 
-        self.assertIn("Governed lifecycle trace", rendered)
-        self.assertIn("Independent verification", rendered)
+        self.assertIn("Full audit trail", rendered)
+        self.assertIn("Technical details", rendered)
+        self.assertIn("data-timestamp=", rendered)
+        self.assertIn("raw_timestamp = 2026-08-22T09:03:00+00:00", rendered)
+        self.assertIn("authority = State Authority", rendered)
+        self.assertIn("actor = ns-verifier@example", rendered)
         self.assertIn("evidence_id = evidence-1", rendered)
 
 
