@@ -3,41 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Next Shift — Governed Lifecycle Trace</title>
+  <title>Next Shift — Full Audit Trail</title>
+  <script src="/static/theme.js" defer></script>
   <style>
     :root {
       color-scheme: dark;
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-      background: #071019;
-      color: #e8f2f7;
+      --bg: #071019;
+      --surface: #0c1c26;
+      --surface-2: #091923;
+      --border: #203946;
+      --border-strong: #294455;
+      --text: #e8f2f7;
+      --muted: #93aeba;
+      --accent: #42cabb;
+      --accent-text: #8ee9df;
+      --shadow: rgba(0,0,0,.18);
+      background: var(--bg);
+      color: var(--text);
+    }
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f4f8f9;
+      --surface: #ffffff;
+      --surface-2: #f7fafb;
+      --border: #d8e3e7;
+      --border-strong: #b9cbd2;
+      --text: #173440;
+      --muted: #607883;
+      --accent: #16877f;
+      --accent-text: #126f69;
+      --shadow: rgba(22,56,68,.08);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #071019; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
     main { width: min(1180px, 100%); margin: 0 auto; padding: 28px; }
-    a { color: #7ce1d4; }
+    a { color: var(--accent); }
+    button { font: inherit; }
     .top { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 24px; }
-    .eyebrow { color: #42cabb; text-transform: uppercase; letter-spacing: .11em; font-size: 10px; font-weight: 800; }
-    h1 { margin: 5px 0 4px; font-size: 24px; }
-    .sub { color: #88a4b4; font-size: 12px; }
+    .top-actions { display:flex; align-items:center; gap:10px; }
+    .security-strip { display:flex; }
+    #theme-toggle { cursor:pointer; border:1px solid var(--border-strong); border-radius:9px; padding:8px 12px; background:var(--surface-2); color:var(--text); font-weight:800; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .11em; font-size: 10px; font-weight: 800; }
+    h1 { margin: 5px 0 4px; font-size: 26px; }
+    .sub { max-width:760px; color: var(--muted); font-size: 12px; line-height:1.5; }
     .summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin: 18px 0 26px; }
-    .summary div { padding: 12px; border: 1px solid #203440; border-radius: 10px; background: #0c1c26; }
-    .summary span { display: block; color: #88a4b4; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .summary div { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); }
+    .summary span.label { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
     .summary strong { display: block; margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
-    .trace { position: relative; margin-left: 11px; border-left: 2px solid #294455; }
-    .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid #203946; border-radius: 10px; background: #0c1c26; }
-    .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: #42cabb; border: 3px solid #071019; }
+    .trace { position: relative; margin-left: 11px; border-left: 2px solid var(--border-strong); }
+    .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); }
+    .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
     .event-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-    .stage { color: #42cabb; font-size: 9px; font-weight: 800; letter-spacing: .09em; }
-    .status { padding: 3px 7px; border: 1px solid #39746f; border-radius: 999px; color: #8ee9df; font-size: 9px; font-weight: 800; }
+    .stage { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform:uppercase; }
+    .status { padding: 3px 7px; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent-text); font-size: 9px; font-weight: 800; white-space:nowrap; }
     .event h2 { margin: 5px 0 7px; font-size: 15px; }
-    .meta { color: #a8c1cf; font-size: 11px; line-height: 1.5; }
-    .detail { margin-top: 8px; color: #d4e3e9; font-size: 12px; line-height: 1.45; }
+    .meta { color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .meta strong { color:var(--text); font-weight:700; }
+    .detail { margin-top: 8px; color: var(--text); font-size: 12px; line-height: 1.5; }
+    .technical { margin-top:10px; border-top:1px solid var(--border); padding-top:9px; }
+    .technical summary { cursor:pointer; color:var(--muted); font-size:10px; font-weight:800; }
     .ids { display: grid; gap: 4px; margin-top: 9px; }
-    .ids code { display: block; padding: 5px 7px; border-radius: 6px; background: #091923; color: #a8c1cf; font-size: 10px; overflow-wrap: anywhere; white-space: normal; }
-    .empty { padding: 20px; border: 1px solid #203440; border-radius: 10px; color: #a8c1cf; }
+    .ids code { display: block; padding: 5px 7px; border-radius: 6px; background: var(--surface-2); color: var(--muted); font-size: 10px; overflow-wrap: anywhere; white-space: normal; }
+    .empty { padding: 20px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); background:var(--surface); }
     @media (max-width: 760px) {
       main { padding: 18px; }
       .top { flex-direction: column; }
+      .top-actions { width:100%; justify-content:space-between; }
       .summary { grid-template-columns: 1fr 1fr; }
     }
   </style>
@@ -46,21 +78,24 @@
   <main>
     <div class="top">
       <div>
-        <span class="eyebrow">Next Shift observability</span>
-        <h1>Governed lifecycle trace</h1>
-        <div class="sub">Authoritative operational evidence assembled from Firestore records. No synthetic telemetry.</div>
+        <span class="eyebrow">Work history & technical proof</span>
+        <h1>Full audit trail</h1>
+        <div class="sub">A readable history of this work item. Exact service identities, raw timestamps and event IDs are preserved under Technical details.</div>
       </div>
-      <a href="/">Back to Operations Control</a>
+      <div class="top-actions">
+        <a href="/">Back to Live Operations</a>
+        <div class="security-strip" aria-label="Display controls"></div>
+      </div>
     </div>
 
     {% if error %}
       <div class="empty">{{ error }}</div>
     {% elif trace %}
       <section class="summary">
-        <div><span>Issue</span><strong>{{ trace.issue_id }}</strong></div>
-        <div><span>Owner</span><strong>{{ trace.owner }}</strong></div>
-        <div><span>Work order</span><strong>{{ trace.work_order or '—' }}</strong></div>
-        <div><span>Authoritative state</span><strong>{{ trace.current_state }}{% if trace.verification_status %} · {{ trace.verification_status }}{% endif %}</strong></div>
+        <div><span class="label">Work item</span><strong>{{ trace.issue_id }}</strong></div>
+        <div><span class="label">Owner</span><strong>{{ trace.owner }}</strong></div>
+        <div><span class="label">Work order</span><strong>{{ trace.work_order or '—' }}</strong></div>
+        <div><span class="label">Current status</span><strong class="friendly-current-status" data-status="{{ trace.current_state }}" data-verification="{{ trace.verification_status or '' }}">{{ trace.current_state }}</strong></div>
       </section>
 
       <div class="trace">
@@ -68,27 +103,172 @@
           <article class="event">
             <div class="event-top">
               <div>
-                <div class="stage">{{ item.stage }}</div>
-                <h2>{{ item.title }}</h2>
+                <div class="stage friendly-stage" data-stage="{{ item.stage }}">{{ item.stage }}</div>
+                <h2 class="friendly-title" data-title="{{ item.title }}">{{ item.title }}</h2>
               </div>
-              <span class="status">{{ item.status }}</span>
+              <span class="status friendly-status" data-status="{{ item.status }}">{{ item.status }}</span>
             </div>
             <div class="meta">
-              {{ item.at or 'Timestamp unavailable' }}<br>
-              Authority: {{ item.authority }}{% if item.actor %}<br>Actor: {{ item.actor }}{% endif %}
+              <strong class="event-time" data-timestamp="{{ item.at or '' }}">{{ item.at or 'Time unavailable' }}</strong><br>
+              Source: <span class="friendly-source" data-source="{{ item.authority }}">{{ item.authority }}</span>{% if item.actor %}<br>
+              Handled by: <span class="friendly-actor" data-actor="{{ item.actor }}">{{ item.actor }}</span>{% endif %}
             </div>
             {% if item.detail %}<div class="detail">{{ item.detail }}</div>{% endif %}
-            {% if item.identifiers %}
+            <details class="technical">
+              <summary>Technical details</summary>
               <div class="ids">
+                <code>raw_timestamp = {{ item.at or 'unavailable' }}</code>
+                <code>authority = {{ item.authority }}</code>
+                {% if item.actor %}<code>actor = {{ item.actor }}</code>{% endif %}
                 {% for key, value in item.identifiers.items() %}
                   <code>{{ key }} = {{ value }}</code>
                 {% endfor %}
               </div>
-            {% endif %}
+            </details>
           </article>
         {% endfor %}
       </div>
     {% endif %}
   </main>
+
+  <script>
+    (() => {
+      const stateLabels = {
+        RECEIVED: "Received",
+        TRIAGED: "Triaged",
+        ASSIGNED: "Assigned",
+        ACTION_PENDING: "Waiting",
+        VERIFYING: "Checking evidence",
+        CLOSED: "Verified complete",
+        BLOCKED: "Blocked",
+        HUMAN_REVIEW: "Needs decision",
+        FAILED: "Failed",
+        VERIFIED: "Verified",
+        RECORDED: "Evidence recorded",
+        DELIVERED: "Sent to frontline",
+        ACKNOWLEDGED: "Acknowledged",
+        COMPLETION_CLAIMED: "Reported complete",
+        REJECTED: "Rejected",
+        RECOVERABLE: "Work remains open",
+        PROPOSED: "Proposed",
+        SANCTIONED: "Approved",
+        PENDING: "Pending",
+      };
+
+      const stageLabels = {
+        INTAKE: "Handover",
+        SPECIALIST: "Operational team",
+        HUMAN_REACH: "Frontline coordination",
+        EVIDENCE: "Evidence",
+        VERIFIER: "Verification",
+        VERIFICATION_FAILURE: "Verification",
+        CONTROLLED_RECOVERY: "Recovery",
+      };
+
+      function words(value) {
+        return String(value || "")
+          .replaceAll("_", " ")
+          .replace(/\b\w/g, (letter) => letter.toUpperCase());
+      }
+
+      function state(value) {
+        return stateLabels[String(value || "").toUpperCase()] || words(value);
+      }
+
+      function friendlyTitle(value) {
+        const text = String(value || "");
+        if (text === "Governed handover persisted") return "Handover accepted and work created";
+        if (text === "Frontline work delivered") return "Work sent to frontline";
+        if (text === "Independent verification rejected") return "Evidence check failed — work remains open";
+        if (text.startsWith("Frontline response:")) {
+          return `Frontline update · ${state(text.slice("Frontline response:".length).trim())}`;
+        }
+        if (text.startsWith("Trusted evidence:")) {
+          return `Completion evidence recorded · ${words(text.slice("Trusted evidence:".length).trim())}`;
+        }
+        if (text.includes(" → ")) {
+          const [from, to] = text.split(" → ");
+          return `Status changed: ${state(from)} → ${state(to)}`;
+        }
+        if (text.startsWith("Recovery plan ")) {
+          return `Recovery plan · ${words(text.slice("Recovery plan ".length))}`;
+        }
+        return text;
+      }
+
+      function source(value) {
+        return {
+          "State Authority": "Workflow Control",
+          "Human Reach / Google Chat": "Google Chat",
+          "Human Reach": "Frontline coordination",
+          "Trusted Evidence": "Evidence service",
+        }[value] || value;
+      }
+
+      function actor(value) {
+        const text = String(value || "");
+        const key = text.toLowerCase();
+        if (key.includes("ns-human-reach")) return "Human Reach";
+        if (key.includes("ns-verifier")) return "Independent verifier";
+        if (key.includes("ns-trusted-evidence")) return "Evidence service";
+        if (key.includes("ns-operations-ui")) return "Operations Control";
+        if (key.includes("patient-transport")) return "Patient Transport specialist";
+        if (key.includes("asset-logistics")) return "Asset Logistics specialist";
+        if (key.includes("language-access")) return "Language Access specialist";
+        if (key.includes("discharge-dme")) return "Discharge DME specialist";
+        if (key.includes("evs-throughput")) return "EVS Throughput specialist";
+        if (key.includes("facilities")) return "Facilities specialist";
+        return text;
+      }
+
+      function localTime(value) {
+        if (!value) return "Time unavailable";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+
+        const now = new Date();
+        const today = date.toDateString() === now.toDateString();
+        const yesterdayDate = new Date(now);
+        yesterdayDate.setDate(now.getDate() - 1);
+        const yesterday = date.toDateString() === yesterdayDate.toDateString();
+        const clock = date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+
+        if (today) return `Today · ${clock}`;
+        if (yesterday) return `Yesterday · ${clock}`;
+        return `${date.toLocaleDateString([], { day: "2-digit", month: "short", year: date.getFullYear() === now.getFullYear() ? undefined : "numeric" })} · ${clock}`;
+      }
+
+      document.querySelectorAll(".friendly-status").forEach((element) => {
+        element.textContent = state(element.dataset.status);
+      });
+      document.querySelectorAll(".friendly-stage").forEach((element) => {
+        element.textContent = stageLabels[element.dataset.stage] || words(element.dataset.stage);
+      });
+      document.querySelectorAll(".friendly-title").forEach((element) => {
+        element.textContent = friendlyTitle(element.dataset.title);
+      });
+      document.querySelectorAll(".friendly-source").forEach((element) => {
+        element.textContent = source(element.dataset.source);
+      });
+      document.querySelectorAll(".friendly-actor").forEach((element) => {
+        element.textContent = actor(element.dataset.actor);
+      });
+      document.querySelectorAll(".event-time").forEach((element) => {
+        element.textContent = localTime(element.dataset.timestamp);
+        element.title = `Local browser time · raw timestamp available in Technical details`;
+      });
+      document.querySelectorAll(".friendly-current-status").forEach((element) => {
+        const current = element.dataset.status;
+        const verification = element.dataset.verification;
+        element.textContent = current === "CLOSED" && verification === "VERIFIED"
+          ? "Verified complete"
+          : state(current);
+      });
+    })();
+  </script>
 </body>
 </html>
