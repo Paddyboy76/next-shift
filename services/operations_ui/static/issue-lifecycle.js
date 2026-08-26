@@ -172,12 +172,21 @@
     const drawer = document.querySelector("#drawer-content");
     if (!drawer) return;
     const detailSections = Array.from(drawer.querySelectorAll(".frontline-investigation > details"));
-    const bySummary = (label) => detailSections.find(
-      (node) => node.querySelector(":scope > summary")?.textContent.trim().toLowerCase() === label
-    );
 
-    enhanceTimeline(bySummary("past activity"), "past-activity", true);
-    enhanceTimeline(bySummary("state authority audit"), "technical-audit", false);
+    const findByLabels = (...labels) => {
+      const normalized = new Set(labels.map((label) => String(label).trim().toLowerCase()));
+      return detailSections.find((node) => {
+        const text = node.querySelector(":scope > summary")?.textContent.trim().toLowerCase();
+        return text && normalized.has(text);
+      });
+    };
+
+    enhanceTimeline(findByLabels("past activity"), "past-activity", true);
+    enhanceTimeline(
+      findByLabels("state authority audit", "technical audit"),
+      "technical-audit",
+      false
+    );
   }
 
   function renderCardLifecycles() {
