@@ -133,29 +133,30 @@
     lifecycle.innerHTML = items;
   }
 
-  function enhancePastActivity() {
-    const drawer = document.querySelector("#drawer-content");
-    if (!drawer) return;
-    const details = Array.from(drawer.querySelectorAll(".frontline-investigation > details"))
-      .find((node) => node.querySelector(":scope > summary")?.textContent.trim().toLowerCase() === "past activity");
-    if (!details || details.dataset.lifecycleEnhanced === "1") return;
+  function stageMarker(item, isCurrent) {
+    const transition = item.querySelector("strong")?.textContent || "";
+    const stageIndex = stageForTransition(transition);
+    const marker = document.createElement("span");
+    marker.className = `past-stage-marker stage-${stageIndex + 1}${isCurrent ? " is-current" : ""}`;
+    marker.textContent = String(stageIndex + 1);
+    marker.title = stages[stageIndex]?.label || "Lifecycle stage";
+    return marker;
+  }
 
+  function enhanceTimeline(details, kind, openByDefault) {
+    if (!details || details.dataset.lifecycleEnhanced === "1") return;
     const items = Array.from(details.querySelectorAll(":scope > .frontline-history-item"));
     if (!items.length) return;
+
     details.dataset.lifecycleEnhanced = "1";
-    details.open = true;
-    details.classList.add("past-activity-focus");
+    details.open = openByDefault;
+    details.classList.add("past-activity-focus", `${kind}-focus`);
 
     items.forEach((item, index) => {
-      const transition = item.querySelector("strong")?.textContent || "";
-      const stageIndex = stageForTransition(transition);
-      item.classList.add("past-activity-item");
-      item.classList.toggle("is-current", index === 0);
-      const marker = document.createElement("span");
-      marker.className = `past-stage-marker${index === 0 ? " is-current" : ""}`;
-      marker.textContent = String(stageIndex + 1);
-      marker.title = stages[stageIndex]?.label || "Lifecycle stage";
-      item.prepend(marker);
+      const isCurrent = index === 0;
+      item.classList.add("past-activity-item", `${kind}-item`);
+      item.classList.toggle("is-current", isCurrent);
+      item.prepend(stageMarker(item, isCurrent));
     });
 
     if (items.length > 1) {
@@ -165,6 +166,18 @@
       items.slice(1).forEach((item) => earlier.appendChild(item));
       details.appendChild(earlier);
     }
+  }
+
+  function enhanceDrawerTimelines() {
+    const drawer = document.querySelector("#drawer-content");
+    if (!drawer) return;
+    const detailSections = Array.from(drawer.querySelectorAll(".frontline-investigation > details"));
+    const bySummary = (label) => detailSections.find(
+      (node) => node.querySelector(":scope > summary")?.textContent.trim().toLowerCase() === label
+    );
+
+    enhanceTimeline(bySummary("past activity"), "past-activity", true);
+    enhanceTimeline(bySummary("state authority audit"), "technical-audit", false);
   }
 
   function renderCardLifecycles() {
@@ -179,7 +192,7 @@
       queued = false;
       renderDrawerLifecycle();
       renderCardLifecycles();
-      enhancePastActivity();
+      enhanceDrawerTimelines();
     });
   }
 
