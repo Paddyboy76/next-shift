@@ -5,6 +5,17 @@ let recordedChunks = [];
 const drawer = document.querySelector("#drawer");
 const backdrop = document.querySelector("#drawer-backdrop");
 
+const publicDemoHandover = "Synthetic night-shift handover for Tower 4: a standard wheelchair is missing from the Level 3 lift lobby. A Spanish interpreter is needed in Room 402. Home oxygen delivery to the synthetic discharge lounge is still pending. Room 418 needs EVS turnaround. The sink in Room 406 is leaking. Patient transport is waiting to move a guest from the discharge lounge to the north entrance.";
+
+// Shared acceptance copy for the governed issue actions rendered by the
+// frontline shell. Keeping these labels here preserves the public UI contract
+// while deeplink.js remains the sole live-work renderer/poller.
+const governedActionLabels = Object.freeze({
+  recordEvidence: "Record synthetic trusted evidence",
+  verify: "Run independent verifier",
+});
+window.nextShiftGovernedActionLabels = governedActionLabels;
+
 function closeDrawer() {
   drawer.classList.add("hidden");
   backdrop.classList.add("hidden");
@@ -30,8 +41,21 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, spoken_receipt: spokenReceipt }),
     });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(payload?.message || payload?.detail || `${response.status}`);
+    const raw = await response.text();
+    let payload = null;
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch (_error) {
+        payload = null;
+      }
+    }
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.detail || payload?.error || raw.trim() || `${response.status}`);
+    }
+    if (payload === null) {
+      throw new Error("Invalid JSON response from governed intake");
+    }
     status.textContent = payload.blocked ? `Blocked by security policy: ${payload.message}` : payload.message;
     if (!payload.blocked) {
       textarea.value = "";
@@ -49,7 +73,7 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
 
 document.querySelector("#load-demo-handover").addEventListener("click", () => {
   const textarea = document.querySelector("#handover");
-  textarea.value = "Synthetic night-shift handover for Tower 4: a standard wheelchair is missing from the Level 3 lift lobby. A Spanish interpreter is needed in Room 402. Home oxygen delivery to the synthetic discharge lounge is still pending. Room 418 needs EVS turnaround. The sink in Room 406 is leaking. Patient transport is waiting to move a guest from the discharge lounge to the north entrance.";
+  textarea.value = publicDemoHandover;
   spokenReceipt = null;
   document.querySelector("#spoken-status").textContent = "Prepared synthetic text · review before sending";
   document.querySelector("#intake-status").textContent = "Six operational teams represented · submission still uses the governed live path";
