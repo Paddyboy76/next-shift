@@ -14,10 +14,21 @@
     if (state === "RECEIVED") return 0;
     if (state === "TRIAGED") return 1;
     if (state === "ASSIGNED") return 2;
-    if (state === "WAITING" || state === "CLAIMED · UNVERIFIED") return 3;
+    if (state === "WAITING" || state === "ACTION_PENDING" || state === "CLAIMED · UNVERIFIED") return 3;
     if (state === "VERIFYING") return 4;
-    if (state === "VERIFIED") return 5;
+    if (state === "VERIFIED" || state === "CLOSED") return 5;
     if (state === "BLOCKED" || state === "NEEDS DECISION" || state === "FAILED") return 2;
+    return 0;
+  };
+
+  const stageForTransition = (text) => {
+    const value = String(text || "").toUpperCase();
+    const target = value.includes("→") ? value.split("→").pop().trim() : value;
+    if (target.includes("ACTION_PENDING") || target === "WAITING") return 3;
+    if (target.includes("VERIFYING")) return 4;
+    if (target.includes("CLOSED") || target.includes("VERIFIED")) return 4;
+    if (target.includes("ASSIGNED")) return 2;
+    if (target.includes("TRIAGED")) return 1;
     return 0;
   };
 
@@ -122,6 +133,40 @@
     lifecycle.innerHTML = items;
   }
 
+  function enhancePastActivity() {
+    const drawer = document.querySelector("#drawer-content");
+    if (!drawer) return;
+    const details = Array.from(drawer.querySelectorAll(".frontline-investigation > details"))
+      .find((node) => node.querySelector(":scope > summary")?.textContent.trim().toLowerCase() === "past activity");
+    if (!details || details.dataset.lifecycleEnhanced === "1") return;
+
+    const items = Array.from(details.querySelectorAll(":scope > .frontline-history-item"));
+    if (!items.length) return;
+    details.dataset.lifecycleEnhanced = "1";
+    details.open = true;
+    details.classList.add("past-activity-focus");
+
+    items.forEach((item, index) => {
+      const transition = item.querySelector("strong")?.textContent || "";
+      const stageIndex = stageForTransition(transition);
+      item.classList.add("past-activity-item");
+      item.classList.toggle("is-current", index === 0);
+      const marker = document.createElement("span");
+      marker.className = `past-stage-marker${index === 0 ? " is-current" : ""}`;
+      marker.textContent = String(stageIndex + 1);
+      marker.title = stages[stageIndex]?.label || "Lifecycle stage";
+      item.prepend(marker);
+    });
+
+    if (items.length > 1) {
+      const earlier = document.createElement("details");
+      earlier.className = "past-activity-earlier";
+      earlier.innerHTML = `<summary>Earlier activity · ${items.length - 1}</summary>`;
+      items.slice(1).forEach((item) => earlier.appendChild(item));
+      details.appendChild(earlier);
+    }
+  }
+
   function renderCardLifecycles() {
     document.querySelectorAll(".frontline-card").forEach(renderCardLifecycle);
   }
@@ -134,6 +179,7 @@
       queued = false;
       renderDrawerLifecycle();
       renderCardLifecycles();
+      enhancePastActivity();
     });
   }
 
