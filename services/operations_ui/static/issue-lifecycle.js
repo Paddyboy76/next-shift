@@ -35,7 +35,18 @@
     return stages[Math.min(index, stages.length - 1)]?.label || "Lifecycle";
   };
 
-  function renderLifecycle() {
+  const stageClasses = (stage, index, currentIndex, completeAll, prefix) => {
+    const isComplete = completeAll || index < currentIndex;
+    const isActive = !completeAll && index === currentIndex;
+    return [
+      `${prefix}-stage`,
+      `${prefix}-${stage.key}`,
+      isComplete ? "is-complete" : "",
+      isActive ? "is-active" : "",
+    ].filter(Boolean).join(" ");
+  };
+
+  function renderDrawerLifecycle() {
     const drawer = document.querySelector("#drawer-content");
     if (!drawer) return;
 
@@ -51,17 +62,9 @@
     const completeAll = activeIndex >= stages.length;
     const currentIndex = completeAll ? stages.length - 1 : activeIndex;
 
-    const items = stages.map((stage, index) => {
-      const isComplete = completeAll || index < currentIndex;
-      const isActive = !completeAll && index === currentIndex;
-      const classes = [
-        "issue-lifecycle-stage",
-        `issue-lifecycle-${stage.key}`,
-        isComplete ? "is-complete" : "",
-        isActive ? "is-active" : "",
-      ].filter(Boolean).join(" ");
-      return `<li class="${classes}"><strong>${index + 1}</strong><span>${stage.label}</span></li>`;
-    }).join("");
+    const items = stages.map((stage, index) => (
+      `<li class="${stageClasses(stage, index, currentIndex, completeAll, "issue-lifecycle")}"><strong>${index + 1}</strong><span>${stage.label}</span></li>`
+    )).join("");
 
     const lifecycle = document.createElement("section");
     lifecycle.className = `issue-lifecycle${completeAll ? " is-finished" : ""}`;
@@ -76,11 +79,61 @@
     header.insertAdjacentElement("afterend", lifecycle);
   }
 
+  function renderCardLifecycle(card) {
+    const stateNode = card.querySelector(".frontline-state");
+    if (!stateNode) return;
+
+    const stateLabel = stateNode.textContent.trim();
+    const activeIndex = stageForState(stateLabel);
+    const completeAll = activeIndex >= stages.length;
+    const currentIndex = completeAll ? stages.length - 1 : activeIndex;
+    const signature = `${stateLabel}|${currentIndex}|${completeAll}`;
+
+    let lifecycle = card.querySelector(":scope > .card-lifecycle");
+    if (lifecycle?.dataset.signature === signature) return;
+
+    const items = stages.map((stage, index) => (
+      `<span class="${stageClasses(stage, index, currentIndex, completeAll, "card-lifecycle")}" title="${stage.label}"><strong>${index + 1}</strong><em>${stage.label}</em></span>`
+    )).join("");
+
+    if (!lifecycle) {
+      lifecycle = document.createElement("div");
+      lifecycle.className = "card-lifecycle";
+      lifecycle.setAttribute("aria-label", "Issue lifecycle progress");
+      const cardTop = card.querySelector(".frontline-card-top");
+      if (cardTop) cardTop.insertAdjacentElement("afterend", lifecycle);
+      else card.prepend(lifecycle);
+    }
+
+    lifecycle.dataset.signature = signature;
+    lifecycle.classList.toggle("is-finished", completeAll);
+    lifecycle.innerHTML = items;
+  }
+
+  function renderCardLifecycles() {
+    document.querySelectorAll(".frontline-card").forEach(renderCardLifecycle);
+  }
+
+  let queued = false;
+  function scheduleRender() {
+    if (queued) return;
+    queued = true;
+    window.requestAnimationFrame(() => {
+      queued = false;
+      renderDrawerLifecycle();
+      renderCardLifecycles();
+    });
+  }
+
   window.addEventListener("load", () => {
     const drawer = document.querySelector("#drawer-content");
-    if (!drawer) return;
-    const observer = new MutationObserver(renderLifecycle);
-    observer.observe(drawer, { childList: true, subtree: true });
-    renderLifecycle();
+    if (drawer) {
+      const drawerObserver = new MutationObserver(scheduleRender);
+      drawerObserver.observe(drawer, { childList: true, subtree: true });
+    }
+
+    const mainObserver = new MutationObserver(scheduleRender);
+    mainObserver.observe(document.body, { childList: true, subtree: true });
+    scheduleRender();
   });
 })();
