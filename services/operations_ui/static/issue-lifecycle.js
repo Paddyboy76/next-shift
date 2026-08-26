@@ -36,8 +36,8 @@
   };
 
   const stageClasses = (stage, index, currentIndex, completeAll, prefix) => {
-    const isComplete = completeAll || index < currentIndex;
-    const isActive = !completeAll && index === currentIndex;
+    const isComplete = completeAll ? index < stages.length - 1 : index < currentIndex;
+    const isActive = completeAll ? index === stages.length - 1 : index === currentIndex;
     return [
       `${prefix}-stage`,
       `${prefix}-${stage.key}`,
@@ -45,6 +45,13 @@
       isActive ? "is-active" : "",
     ].filter(Boolean).join(" ");
   };
+
+  function setCurrentStageClass(stateNode, stageKey, completeAll) {
+    if (!stateNode) return;
+    stages.forEach((stage) => stateNode.classList.remove(`lifecycle-current-${stage.key}`));
+    stateNode.classList.toggle("lifecycle-finished", completeAll);
+    stateNode.classList.add(`lifecycle-current-${stageKey}`);
+  }
 
   function renderDrawerLifecycle() {
     const drawer = document.querySelector("#drawer-content");
@@ -61,6 +68,8 @@
     const activeIndex = stageForState(stateNode.textContent);
     const completeAll = activeIndex >= stages.length;
     const currentIndex = completeAll ? stages.length - 1 : activeIndex;
+    const currentStage = stages[currentIndex];
+    setCurrentStageClass(stateNode, currentStage.key, completeAll);
 
     const items = stages.map((stage, index) => (
       `<li class="${stageClasses(stage, index, currentIndex, completeAll, "issue-lifecycle")}"><strong>${index + 1}</strong><span>${stage.label}</span></li>`
@@ -87,7 +96,10 @@
     const activeIndex = stageForState(stateLabel);
     const completeAll = activeIndex >= stages.length;
     const currentIndex = completeAll ? stages.length - 1 : activeIndex;
+    const currentStage = stages[currentIndex];
     const signature = `${stateLabel}|${currentIndex}|${completeAll}`;
+    setCurrentStageClass(stateNode, currentStage.key, completeAll);
+    card.dataset.lifecycleStage = currentStage.key;
 
     let lifecycle = card.querySelector(":scope > .card-lifecycle");
     if (lifecycle?.dataset.signature === signature) return;
