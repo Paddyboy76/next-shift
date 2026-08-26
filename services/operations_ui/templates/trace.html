@@ -18,6 +18,12 @@
       --muted: #93aeba;
       --accent: #42cabb;
       --accent-text: #8ee9df;
+      --proof: #e0ac52;
+      --proof-soft: rgba(224,172,82,.14);
+      --success: #7fd0a2;
+      --success-soft: rgba(127,208,162,.14);
+      --danger: #ef7669;
+      --danger-soft: rgba(239,118,105,.14);
       --shadow: rgba(0,0,0,.18);
       background: var(--bg);
       color: var(--text);
@@ -33,6 +39,12 @@
       --muted: #607883;
       --accent: #16877f;
       --accent-text: #126f69;
+      --proof: #9a6515;
+      --proof-soft: rgba(154,101,21,.10);
+      --success: #28704b;
+      --success-soft: rgba(40,112,75,.10);
+      --danger: #ad3f34;
+      --danger-soft: rgba(173,63,52,.10);
       --shadow: rgba(22,56,68,.08);
     }
     * { box-sizing: border-box; }
@@ -51,16 +63,52 @@
     .summary div { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); }
     .summary span.label { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
     .summary strong { display: block; margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+    .summary .current-status-card { border-color: var(--border-strong); background: color-mix(in srgb,var(--surface) 92%,var(--accent) 8%); }
+    .friendly-current-status { display:inline-flex!important; width:auto; padding:5px 9px; border:1px solid var(--accent); border-radius:999px; background:rgba(66,202,187,.10); color:var(--accent-text); }
+    .friendly-current-status[data-status="ACTION_PENDING"] { border-color:var(--proof); background:var(--proof-soft); color:var(--proof); }
+    .friendly-current-status[data-status="VERIFYING"],
+    .friendly-current-status[data-status="CLOSED"][data-verification="VERIFIED"] { border-color:var(--success); background:var(--success-soft); color:var(--success); }
+    .friendly-current-status[data-status="BLOCKED"],
+    .friendly-current-status[data-status="HUMAN_REVIEW"],
+    .friendly-current-status[data-status="FAILED"] { border-color:var(--danger); background:var(--danger-soft); color:var(--danger); }
     .trace { position: relative; margin-left: 11px; border-left: 2px solid var(--border-strong); }
-    .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); }
-    .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+    .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); transition:opacity .18s ease,border-color .18s ease,background .18s ease; }
+    .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); border: 3px solid var(--bg); }
+    .event-past { opacity:.62; box-shadow:none; }
+    .event-past:hover,.event-past:focus-within { opacity:.9; }
+    .event-current { opacity:1; border-color:color-mix(in srgb,var(--accent) 60%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--accent) 6%); }
+    .event-current::before { background:var(--accent); }
+    .trace[data-current-state="ACTION_PENDING"] .event-current { border-color:color-mix(in srgb,var(--proof) 65%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--proof) 6%); }
+    .trace[data-current-state="ACTION_PENDING"] .event-current::before { background:var(--proof); }
+    .trace[data-current-state="VERIFYING"] .event-current,
+    .trace[data-current-state="CLOSED"] .event-current { border-color:color-mix(in srgb,var(--success) 65%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--success) 6%); }
+    .trace[data-current-state="VERIFYING"] .event-current::before,
+    .trace[data-current-state="CLOSED"] .event-current::before { background:var(--success); }
+    .trace[data-current-state="BLOCKED"] .event-current,
+    .trace[data-current-state="HUMAN_REVIEW"] .event-current,
+    .trace[data-current-state="FAILED"] .event-current { border-color:color-mix(in srgb,var(--danger) 65%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--danger) 6%); }
+    .trace[data-current-state="BLOCKED"] .event-current::before,
+    .trace[data-current-state="HUMAN_REVIEW"] .event-current::before,
+    .trace[data-current-state="FAILED"] .event-current::before { background:var(--danger); }
     .event-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-    .stage { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform:uppercase; }
-    .status { padding: 3px 7px; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent-text); font-size: 9px; font-weight: 800; white-space:nowrap; }
+    .stage { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform:uppercase; }
+    .event-current .stage { color:var(--accent); }
+    .status { padding: 3px 7px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--muted); font-size: 9px; font-weight: 800; white-space:nowrap; }
+    .event-current .status { border-color:var(--accent); color:var(--accent-text); }
+    .trace[data-current-state="ACTION_PENDING"] .event-current .stage,
+    .trace[data-current-state="ACTION_PENDING"] .event-current .status { color:var(--proof); }
+    .trace[data-current-state="ACTION_PENDING"] .event-current .status { border-color:var(--proof); }
+    .trace[data-current-state="VERIFYING"] .event-current .stage,
+    .trace[data-current-state="VERIFYING"] .event-current .status,
+    .trace[data-current-state="CLOSED"] .event-current .stage,
+    .trace[data-current-state="CLOSED"] .event-current .status { color:var(--success); }
+    .trace[data-current-state="VERIFYING"] .event-current .status,
+    .trace[data-current-state="CLOSED"] .event-current .status { border-color:var(--success); }
     .event h2 { margin: 5px 0 7px; font-size: 15px; }
     .meta { color: var(--muted); font-size: 11px; line-height: 1.6; }
     .meta strong { color:var(--text); font-weight:700; }
     .detail { margin-top: 8px; color: var(--text); font-size: 12px; line-height: 1.5; }
+    .event-past .detail { color:var(--muted); }
     .technical { margin-top:10px; border-top:1px solid var(--border); padding-top:9px; }
     .technical summary { cursor:pointer; color:var(--muted); font-size:10px; font-weight:800; }
     .ids { display: grid; gap: 4px; margin-top: 9px; }
@@ -95,12 +143,12 @@
         <div><span class="label">Work item</span><strong>{{ trace.issue_id }}</strong></div>
         <div><span class="label">Owner</span><strong>{{ trace.owner }}</strong></div>
         <div><span class="label">Work order</span><strong>{{ trace.work_order or '—' }}</strong></div>
-        <div><span class="label">Current status</span><strong class="friendly-current-status" data-status="{{ trace.current_state }}" data-verification="{{ trace.verification_status or '' }}">{{ trace.current_state }}</strong></div>
+        <div class="current-status-card"><span class="label">Current status</span><strong class="friendly-current-status" data-status="{{ trace.current_state }}" data-verification="{{ trace.verification_status or '' }}">{{ trace.current_state }}</strong></div>
       </section>
 
-      <div class="trace">
+      <div class="trace" data-current-state="{{ trace.current_state }}">
         {% for item in trace["items"] %}
-          <article class="event">
+          <article class="event {% if loop.last %}event-current{% else %}event-past{% endif %}">
             <div class="event-top">
               <div>
                 <div class="stage friendly-stage" data-stage="{{ item.stage }}">{{ item.stage }}</div>
