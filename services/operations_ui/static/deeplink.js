@@ -475,12 +475,61 @@
         requestJson("/api/intelligence").catch(() => null),
       ]);
       const recommendations = Array.isArray(intelligence?.recommendations) ? intelligence.recommendations : [];
-      const content = `<div class="frontline-investigation">
-        <div class="drawer-header"><span class="eyebrow">Past · available when needed</span><h2>History & carried work</h2><div class="subtle-note">Live Operations stays focused on the current shift. Nothing is deleted.</div></div>
-        <section class="past-section"><h3>Carried from earlier shifts · ${carried.length}</h3>${carried.length ? carried.map((issue) => `<div class="past-row"><button data-frontline-issue="${esc(issue.id)}">${esc(issue.owner)} · ${esc(issue.title || issue.id)}</button><span>${esc(stateLabel(issue))} · ${esc(age(issue.last_transition_at || issue.updated_at || issue.created_at))}</span></div>`).join("") : '<div class="frontline-empty">No carried-forward work.</div>'}</section>
-        <section class="past-section"><h3>Recently completed / failed</h3>${completed.length ? completed.map((issue) => `<div class="past-row"><button data-frontline-issue="${esc(issue.id)}">${esc(issue.owner)} · ${esc(issue.title || issue.id)}</button><span>${esc(stateLabel(issue))} · ${esc(shortDate(issue.updated_at || issue.created_at))}</span></div>`).join("") : '<div class="frontline-empty">No recent history.</div>'}</section>
-        <details class="past-section"><summary>Shift snapshots · ${cache.shifts.length}</summary>${cache.shifts.length ? cache.shifts.slice(0, 10).map((snapshot) => `<div class="frontline-history-item"><strong>${esc(snapshot.outgoing_shift || "Shift")} → ${esc(snapshot.incoming_shift || "Shift")}</strong><br>${esc(snapshot.unresolved_count || 0)} unresolved · ${esc(shortDate(snapshot.created_at))}</div>`).join("") : '<div class="frontline-empty">No shift snapshots.</div>'}</details>
-        <details class="past-section"><summary>Management insight · Operational Improvement Advisor</summary>${recommendations.length ? recommendations.map((item) => `<div class="advisor-card"><strong>${esc(item.pattern || "Pattern")}</strong><span>${esc(item.recommended_change || "")}</span><span>Why: ${esc(item.why_it_matters || "")}</span><span>Confidence: ${esc(item.confidence || "—")} · Scope: ${esc(item.affected_scope || "—")}</span></div>`).join("") : '<div class="frontline-empty">No advisory recommendations available.</div>'}</details>
+      const content = `<div class="frontline-investigation past-drawer">
+        <div class="drawer-header">
+          <span class="eyebrow">Past · available when needed</span>
+          <h2>History & continuity</h2>
+          <div class="subtle-note">Live Operations stays focused on the current shift. Historical records remain available here.</div>
+        </div>
+
+        <div class="past-zone past-zone-operations">
+          <div class="past-zone-heading">
+            <span class="past-zone-kicker">Operations history</span>
+            <h3>Work from previous shifts</h3>
+            <p>Operational records that are no longer part of the current-shift view.</p>
+          </div>
+
+          <section class="past-section past-section-carried">
+            <h3>Carried work <span class="past-count">${carried.length}</span></h3>
+            <div class="past-section-note">Unfinished work that crossed a shift boundary.</div>
+            ${carried.length ? carried.map((issue) => `<div class="past-row"><button data-frontline-issue="${esc(issue.id)}">${esc(issue.owner)} · ${esc(issue.title || issue.id)}</button><span>${esc(stateLabel(issue))} · ${esc(age(issue.last_transition_at || issue.updated_at || issue.created_at))}</span></div>`).join("") : '<div class="frontline-empty">No carried-forward work.</div>'}
+          </section>
+
+          <section class="past-section past-section-history">
+            <h3>Completed history</h3>
+            <div class="past-section-note">Verified or failed work retained for audit and review.</div>
+            ${completed.length ? completed.map((issue) => `<div class="past-row"><button data-frontline-issue="${esc(issue.id)}">${esc(issue.owner)} · ${esc(issue.title || issue.id)}</button><span>${esc(stateLabel(issue))} · ${esc(shortDate(issue.updated_at || issue.created_at))}</span></div>`).join("") : '<div class="frontline-empty">No recent history.</div>'}
+          </section>
+        </div>
+
+        <div class="past-zone past-zone-continuity">
+          <div class="past-zone-heading">
+            <span class="past-zone-kicker">Shift continuity</span>
+            <h3>What crossed the handover</h3>
+            <p>Snapshots preserve what was unresolved when responsibility moved between shifts.</p>
+          </div>
+          <details class="past-section past-section-snapshots">
+            <summary>Shift snapshots <span class="past-count">${cache.shifts.length}</span></summary>
+            ${cache.shifts.length ? cache.shifts.slice(0, 10).map((snapshot) => `<div class="frontline-history-item"><strong>${esc(snapshot.outgoing_shift || "Shift")} → ${esc(snapshot.incoming_shift || "Shift")}</strong><br>${esc(snapshot.unresolved_count || 0)} unresolved · ${esc(shortDate(snapshot.created_at))}</div>`).join("") : '<div class="frontline-empty">No shift snapshots.</div>'}
+          </details>
+        </div>
+
+        <div class="past-zone past-zone-advisory">
+          <div class="past-zone-heading">
+            <div class="past-zone-title-row">
+              <div>
+                <span class="past-zone-kicker">Operational intelligence</span>
+                <h3>Improvement advisor</h3>
+              </div>
+              <span class="advisory-only-badge">Advisory only</span>
+            </div>
+            <p>Historical patterns can inform improvement, but cannot change workflow truth or close work.</p>
+          </div>
+          <details class="past-section past-section-advisor" ${recommendations.length ? "open" : ""}>
+            <summary>Management recommendations <span class="past-count">${recommendations.length}</span></summary>
+            ${recommendations.length ? recommendations.map((item) => `<div class="advisor-card"><strong>${esc(item.pattern || "Pattern")}</strong><span>${esc(item.recommended_change || "")}</span><span>Why: ${esc(item.why_it_matters || "")}</span><span>Confidence: ${esc(item.confidence || "—")} · Scope: ${esc(item.affected_scope || "—")}</span></div>`).join("") : '<div class="frontline-empty">No advisory recommendations available.</div>'}
+          </details>
+        </div>
       </div>`;
       openDrawer(content);
       bindCards(document.querySelector("#drawer-content") || document);
