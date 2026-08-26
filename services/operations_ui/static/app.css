@@ -72,13 +72,17 @@ button:disabled{opacity:.55;cursor:wait}
 .frontline-state.lifecycle-finished{border-color:color-mix(in srgb,var(--ns-success) 70%,var(--ns-border));background:var(--ns-success-soft);color:var(--ns-success)}
 
 .past-activity-focus>summary{margin-bottom:10px}
-.past-activity-item{position:relative;padding-left:42px!important;opacity:.62;transition:opacity .18s ease,background .18s ease,border-color .18s ease}
-.past-activity-item.is-current{opacity:1;border:1px solid color-mix(in srgb,var(--ns-proof) 42%,var(--ns-border));background:color-mix(in srgb,var(--ns-surface-2) 90%,var(--ns-proof) 10%)}
-.past-stage-marker{position:absolute;left:10px;top:12px;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--ns-muted);border-radius:50%;color:var(--ns-muted);font-size:8px;font-weight:900}
-.past-stage-marker.is-current{border-color:var(--ns-proof);color:var(--ns-proof);background:var(--ns-proof-soft)}
+.past-activity-item{position:relative;padding-left:42px!important;opacity:.58;transition:opacity .18s ease,background .18s ease,border-color .18s ease}
+.past-activity-item.is-current{opacity:1;border:1px solid color-mix(in srgb,var(--ns-border-strong) 72%,var(--ns-border));background:color-mix(in srgb,var(--ns-surface-2) 96%,var(--ns-accent) 4%)}
+.past-stage-marker{position:absolute;left:10px;top:12px;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--ns-muted);border-radius:50%;color:var(--ns-muted);background:var(--ns-surface-3);font-size:8px;font-weight:900}
+.past-stage-marker.is-current.stage-1,.past-stage-marker.is-current.stage-2,.past-stage-marker.is-current.stage-3{border-color:var(--ns-accent);color:var(--ns-accent-strong);background:var(--ns-accent-soft)}
+.past-stage-marker.is-current.stage-4{border-color:var(--ns-proof);color:var(--ns-proof);background:var(--ns-proof-soft)}
+.past-stage-marker.is-current.stage-5{border-color:var(--ns-success);color:var(--ns-success);background:var(--ns-success-soft)}
 .past-activity-earlier{margin-top:9px!important;padding:9px 0 0!important;border-top:1px solid var(--ns-border)!important}
 .past-activity-earlier>summary{color:var(--ns-muted)!important;font-size:10px!important}
 .past-activity-earlier .past-activity-item{margin-top:7px}
+.technical-audit-focus>summary{margin-bottom:10px}
+.technical-audit-item.is-current{background:color-mix(in srgb,var(--ns-surface-2) 96%,var(--ns-accent) 4%)}
 
 @media (max-width:760px){
   :root{--ns-topbar-height:0px}
