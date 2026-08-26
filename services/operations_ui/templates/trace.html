@@ -74,8 +74,8 @@
     .trace { position: relative; margin-left: 11px; border-left: 2px solid var(--border-strong); }
     .event { position: relative; margin: 0 0 12px 20px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow:0 8px 28px var(--shadow); transition:opacity .18s ease,border-color .18s ease,background .18s ease; }
     .event::before { content: ""; position: absolute; left: -28px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); border: 3px solid var(--bg); }
-    .event-past { opacity:.62; box-shadow:none; }
-    .event-past:hover,.event-past:focus-within { opacity:.9; }
+    .event-past { opacity:.58; box-shadow:none; }
+    .event-past:hover,.event-past:focus-within { opacity:.88; }
     .event-current { opacity:1; border-color:color-mix(in srgb,var(--accent) 60%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--accent) 6%); }
     .event-current::before { background:var(--accent); }
     .trace[data-current-state="ACTION_PENDING"] .event-current { border-color:color-mix(in srgb,var(--proof) 65%,var(--border)); background:color-mix(in srgb,var(--surface) 94%,var(--proof) 6%); }
@@ -113,6 +113,10 @@
     .technical summary { cursor:pointer; color:var(--muted); font-size:10px; font-weight:800; }
     .ids { display: grid; gap: 4px; margin-top: 9px; }
     .ids code { display: block; padding: 5px 7px; border-radius: 6px; background: var(--surface-2); color: var(--muted); font-size: 10px; overflow-wrap: anywhere; white-space: normal; }
+    .earlier-events { margin:8px 0 0 20px; padding:9px 0 0; border-top:1px solid var(--border); }
+    .earlier-events>summary { cursor:pointer; color:var(--muted); font-size:11px; font-weight:800; }
+    .earlier-events .event { margin-left:0; margin-top:8px; }
+    .earlier-events .event::before { display:none; }
     .empty { padding: 20px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); background:var(--surface); }
     @media (max-width: 760px) {
       main { padding: 18px; }
@@ -128,7 +132,7 @@
       <div>
         <span class="eyebrow">Work history & technical proof</span>
         <h1>Full audit trail</h1>
-        <div class="sub">A readable history of this work item. Exact service identities, raw timestamps and event IDs are preserved under Technical details.</div>
+        <div class="sub">Current status is shown first. Earlier events remain available below when deeper investigation is needed. Exact service identities, raw timestamps and event IDs are preserved under Technical details.</div>
       </div>
       <div class="top-actions">
         <a href="/">Back to Live Operations</a>
@@ -182,80 +186,34 @@
   <script>
     (() => {
       const stateLabels = {
-        RECEIVED: "Received",
-        TRIAGED: "Triaged",
-        ASSIGNED: "Assigned",
-        ACTION_PENDING: "Waiting",
-        VERIFYING: "Checking evidence",
-        CLOSED: "Verified complete",
-        BLOCKED: "Blocked",
-        HUMAN_REVIEW: "Needs decision",
-        FAILED: "Failed",
-        VERIFIED: "Verified",
-        RECORDED: "Evidence recorded",
-        DELIVERED: "Sent to frontline",
-        ACKNOWLEDGED: "Acknowledged",
-        COMPLETION_CLAIMED: "Reported complete",
-        REJECTED: "Rejected",
-        RECOVERABLE: "Work remains open",
-        PROPOSED: "Proposed",
-        SANCTIONED: "Approved",
-        PENDING: "Pending",
+        RECEIVED: "Received", TRIAGED: "Triaged", ASSIGNED: "Assigned", ACTION_PENDING: "Waiting",
+        VERIFYING: "Checking evidence", CLOSED: "Verified complete", BLOCKED: "Blocked", HUMAN_REVIEW: "Needs decision",
+        FAILED: "Failed", VERIFIED: "Verified", RECORDED: "Evidence recorded", DELIVERED: "Sent to frontline",
+        ACKNOWLEDGED: "Acknowledged", COMPLETION_CLAIMED: "Reported complete", REJECTED: "Rejected",
+        RECOVERABLE: "Work remains open", PROPOSED: "Proposed", SANCTIONED: "Approved", PENDING: "Pending",
       };
-
       const stageLabels = {
-        INTAKE: "Handover",
-        SPECIALIST: "Operational team",
-        HUMAN_REACH: "Frontline coordination",
-        EVIDENCE: "Evidence",
-        VERIFIER: "Verification",
-        VERIFICATION_FAILURE: "Verification",
-        CONTROLLED_RECOVERY: "Recovery",
+        INTAKE: "Handover", SPECIALIST: "Operational team", HUMAN_REACH: "Frontline coordination",
+        EVIDENCE: "Evidence", VERIFIER: "Verification", VERIFICATION_FAILURE: "Verification", CONTROLLED_RECOVERY: "Recovery",
       };
-
-      function words(value) {
-        return String(value || "")
-          .replaceAll("_", " ")
-          .replace(/\b\w/g, (letter) => letter.toUpperCase());
-      }
-
-      function state(value) {
-        return stateLabels[String(value || "").toUpperCase()] || words(value);
-      }
-
+      function words(value) { return String(value || "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+      function state(value) { return stateLabels[String(value || "").toUpperCase()] || words(value); }
       function friendlyTitle(value) {
         const text = String(value || "");
         if (text === "Governed handover persisted") return "Handover accepted and work created";
         if (text === "Frontline work delivered") return "Work sent to frontline";
         if (text === "Independent verification rejected") return "Evidence check failed — work remains open";
-        if (text.startsWith("Frontline response:")) {
-          return `Frontline update · ${state(text.slice("Frontline response:".length).trim())}`;
-        }
-        if (text.startsWith("Trusted evidence:")) {
-          return `Completion evidence recorded · ${words(text.slice("Trusted evidence:".length).trim())}`;
-        }
-        if (text.includes(" → ")) {
-          const [from, to] = text.split(" → ");
-          return `Status changed: ${state(from)} → ${state(to)}`;
-        }
-        if (text.startsWith("Recovery plan ")) {
-          return `Recovery plan · ${words(text.slice("Recovery plan ".length))}`;
-        }
+        if (text.startsWith("Frontline response:")) return `Frontline update · ${state(text.slice("Frontline response:".length).trim())}`;
+        if (text.startsWith("Trusted evidence:")) return `Completion evidence recorded · ${words(text.slice("Trusted evidence:".length).trim())}`;
+        if (text.includes(" → ")) { const [from, to] = text.split(" → "); return `Status changed: ${state(from)} → ${state(to)}`; }
+        if (text.startsWith("Recovery plan ")) return `Recovery plan · ${words(text.slice("Recovery plan ".length))}`;
         return text;
       }
-
       function source(value) {
-        return {
-          "State Authority": "Workflow Control",
-          "Human Reach / Google Chat": "Google Chat",
-          "Human Reach": "Frontline coordination",
-          "Trusted Evidence": "Evidence service",
-        }[value] || value;
+        return { "State Authority":"Workflow Control", "Human Reach / Google Chat":"Google Chat", "Human Reach":"Frontline coordination", "Trusted Evidence":"Evidence service" }[value] || value;
       }
-
       function actor(value) {
-        const text = String(value || "");
-        const key = text.toLowerCase();
+        const text = String(value || ""); const key = text.toLowerCase();
         if (key.includes("ns-human-reach")) return "Human Reach";
         if (key.includes("ns-verifier")) return "Independent verifier";
         if (key.includes("ns-trusted-evidence")) return "Evidence service";
@@ -268,54 +226,46 @@
         if (key.includes("facilities")) return "Facilities specialist";
         return text;
       }
-
       function localTime(value) {
         if (!value) return "Time unavailable";
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return value;
-
-        const now = new Date();
-        const today = date.toDateString() === now.toDateString();
-        const yesterdayDate = new Date(now);
-        yesterdayDate.setDate(now.getDate() - 1);
+        const date = new Date(value); if (Number.isNaN(date.getTime())) return value;
+        const now = new Date(); const today = date.toDateString() === now.toDateString();
+        const yesterdayDate = new Date(now); yesterdayDate.setDate(now.getDate() - 1);
         const yesterday = date.toDateString() === yesterdayDate.toDateString();
-        const clock = date.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        });
-
+        const clock = date.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12:false });
         if (today) return `Today · ${clock}`;
         if (yesterday) return `Yesterday · ${clock}`;
-        return `${date.toLocaleDateString([], { day: "2-digit", month: "short", year: date.getFullYear() === now.getFullYear() ? undefined : "numeric" })} · ${clock}`;
+        return `${date.toLocaleDateString([], { day:"2-digit", month:"short", year:date.getFullYear() === now.getFullYear() ? undefined : "numeric" })} · ${clock}`;
       }
 
-      document.querySelectorAll(".friendly-status").forEach((element) => {
-        element.textContent = state(element.dataset.status);
-      });
-      document.querySelectorAll(".friendly-stage").forEach((element) => {
-        element.textContent = stageLabels[element.dataset.stage] || words(element.dataset.stage);
-      });
-      document.querySelectorAll(".friendly-title").forEach((element) => {
-        element.textContent = friendlyTitle(element.dataset.title);
-      });
-      document.querySelectorAll(".friendly-source").forEach((element) => {
-        element.textContent = source(element.dataset.source);
-      });
-      document.querySelectorAll(".friendly-actor").forEach((element) => {
-        element.textContent = actor(element.dataset.actor);
-      });
+      document.querySelectorAll(".friendly-status").forEach((element) => { element.textContent = state(element.dataset.status); });
+      document.querySelectorAll(".friendly-stage").forEach((element) => { element.textContent = stageLabels[element.dataset.stage] || words(element.dataset.stage); });
+      document.querySelectorAll(".friendly-title").forEach((element) => { element.textContent = friendlyTitle(element.dataset.title); });
+      document.querySelectorAll(".friendly-source").forEach((element) => { element.textContent = source(element.dataset.source); });
+      document.querySelectorAll(".friendly-actor").forEach((element) => { element.textContent = actor(element.dataset.actor); });
       document.querySelectorAll(".event-time").forEach((element) => {
         element.textContent = localTime(element.dataset.timestamp);
-        element.title = `Local browser time · raw timestamp available in Technical details`;
+        element.title = "Local browser time · raw timestamp available in Technical details";
       });
       document.querySelectorAll(".friendly-current-status").forEach((element) => {
         const current = element.dataset.status;
         const verification = element.dataset.verification;
-        element.textContent = current === "CLOSED" && verification === "VERIFIED"
-          ? "Verified complete"
-          : state(current);
+        element.textContent = current === "CLOSED" && verification === "VERIFIED" ? "Verified complete" : state(current);
       });
+
+      const trace = document.querySelector(".trace");
+      if (trace) {
+        const current = trace.querySelector(":scope > .event-current");
+        const past = Array.from(trace.querySelectorAll(":scope > .event-past"));
+        if (current) trace.prepend(current);
+        if (past.length) {
+          const earlier = document.createElement("details");
+          earlier.className = "earlier-events";
+          earlier.innerHTML = `<summary>Earlier activity · ${past.length}</summary>`;
+          past.reverse().forEach((event) => earlier.appendChild(event));
+          current ? current.insertAdjacentElement("afterend", earlier) : trace.appendChild(earlier);
+        }
+      }
     })();
   </script>
 </body>
