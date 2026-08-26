@@ -1,4 +1,4 @@
-:root{font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+:root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;--ns-topbar-height:72px}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100vh}
 body{overflow-x:hidden}
@@ -39,17 +39,19 @@ button:disabled{opacity:.55;cursor:wait}
 .spoken-controls{display:flex;align-items:center;gap:10px;margin-top:9px}
 #spoken-status{font-size:10px;overflow-wrap:anywhere}
 
-.drawer-backdrop{position:fixed;inset:0;z-index:40}
-.drawer{position:fixed;z-index:41;top:0;right:0;width:min(560px,96vw);height:100vh;padding:24px;overflow-y:auto}
+.drawer-backdrop{position:fixed;z-index:40;top:var(--ns-topbar-height);right:0;bottom:0;left:0}
+.drawer{position:fixed;z-index:41;top:var(--ns-topbar-height);right:0;width:min(560px,96vw);height:calc(100dvh - var(--ns-topbar-height));padding:24px;overflow-y:auto;overscroll-behavior:contain}
 .drawer-close{position:sticky;top:0;float:right;width:36px;height:36px;padding:0;border-radius:50%;z-index:3;font-size:16px}
 .drawer-header{position:sticky;top:0;z-index:1;margin:-24px -24px 0;padding:24px 68px 14px 24px}
 
 @media (max-width:1100px){.demo-intro{grid-template-columns:1fr;gap:16px}}
 @media (max-width:760px){
+  :root{--ns-topbar-height:0px}
   .topbar{align-items:flex-start;flex-direction:column;padding:14px 16px}
   .security-strip{justify-content:flex-start}
   main{padding:14px}
   .proof-chain{overflow-x:auto}
-  .drawer{width:100vw;padding:20px}
+  .drawer-backdrop{top:0}
+  .drawer{top:0;width:100vw;height:100dvh;padding:20px}
   .drawer-header{margin:-20px -20px 0;padding:20px 60px 12px 20px}
 }
