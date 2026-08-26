@@ -59,6 +59,16 @@ button:disabled{opacity:.55;cursor:wait}
 .issue-lifecycle-verify.is-active,.issue-lifecycle.is-finished .issue-lifecycle-verify{border-color:color-mix(in srgb,var(--ns-success) 58%,var(--ns-border));background:var(--ns-success-soft);color:var(--ns-success)}
 .issue-lifecycle.is-finished .issue-lifecycle-stage{border-color:color-mix(in srgb,var(--ns-success) 42%,var(--ns-border));background:var(--ns-success-soft);color:var(--ns-success);box-shadow:none;transform:none}
 
+.card-lifecycle{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:8px 0 5px;padding:0;pointer-events:none}
+.card-lifecycle-stage{display:grid;justify-items:center;gap:2px;min-width:0;padding:4px 2px;border:1px solid var(--ns-border);border-radius:7px;background:color-mix(in srgb,var(--ns-surface-2) 92%,transparent);color:var(--ns-faint);transition:border-color .18s ease,background .18s ease,color .18s ease}
+.card-lifecycle-stage strong{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1.5px solid currentColor;border-radius:50%;font-size:6px;line-height:1;font-weight:900}
+.card-lifecycle-stage em{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:5.5px;font-style:normal;font-weight:900;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.card-lifecycle-stage.is-complete{border-color:color-mix(in srgb,var(--ns-accent) 34%,var(--ns-border));background:var(--ns-accent-soft);color:var(--ns-accent-strong)}
+.card-lifecycle-stage.is-active{border-color:color-mix(in srgb,var(--ns-accent) 64%,var(--ns-border));background:color-mix(in srgb,var(--ns-accent-soft) 82%,var(--ns-surface-2));color:var(--ns-accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ns-accent) 24%,transparent)}
+.card-lifecycle-prove.is-active,.card-lifecycle-prove.is-complete{border-color:color-mix(in srgb,var(--ns-proof) 58%,var(--ns-border));background:var(--ns-proof-soft);color:var(--ns-proof)}
+.card-lifecycle-verify.is-active,.card-lifecycle.is-finished .card-lifecycle-verify{border-color:color-mix(in srgb,var(--ns-success) 58%,var(--ns-border));background:var(--ns-success-soft);color:var(--ns-success)}
+.card-lifecycle.is-finished .card-lifecycle-stage{border-color:color-mix(in srgb,var(--ns-success) 38%,var(--ns-border));background:var(--ns-success-soft);color:var(--ns-success);box-shadow:none}
+
 @media (max-width:760px){
   :root{--ns-topbar-height:0px}
   .topbar{align-items:flex-start;flex-direction:column;padding:14px 16px}
@@ -72,4 +82,5 @@ button:disabled{opacity:.55;cursor:wait}
   .drawer-header{margin:0 0 12px;padding:0 48px 0 0}
   .issue-lifecycle-heading{align-items:flex-start;flex-direction:column;gap:4px}
   .issue-lifecycle ol{grid-template-columns:repeat(5,minmax(52px,1fr));overflow-x:auto;padding-bottom:2px}
+  .card-lifecycle-stage em{font-size:5px}
 }
