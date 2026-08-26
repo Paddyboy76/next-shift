@@ -12,6 +12,11 @@ h3{font-size:15px}
 .brand-row{display:flex;align-items:center;gap:12px}
 .brand-mark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;font-weight:900}
 .brand-row p{margin-top:3px;font-size:11px}
+.brand-wordmark{display:flex;align-items:center;min-width:190px;height:42px}
+.brand-wordmark svg{display:block;width:190px;height:42px;overflow:visible}
+.brand-wordmark .brand-word-main{fill:var(--ns-text,#eef6f7);font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:25px;font-weight:900;letter-spacing:.5px}
+.brand-wordmark .brand-word-shift{fill:var(--ns-muted,#8ca3ad);font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:9px;font-weight:800;letter-spacing:2px}
+.brand-wordmark .brand-x-mark{fill:var(--ns-accent,#42cabb)}
 .security-strip{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 .security-strip span,.synthetic-badge{padding:5px 8px;border-radius:999px;font-size:10px}
 
@@ -41,17 +46,21 @@ button:disabled{opacity:.55;cursor:wait}
 
 .drawer-backdrop{position:fixed;z-index:40;top:var(--ns-topbar-height);right:0;bottom:0;left:0}
 .drawer{position:fixed;z-index:41;top:var(--ns-topbar-height);right:0;width:min(560px,96vw);height:calc(100dvh - var(--ns-topbar-height));padding:24px;overflow-y:auto;overscroll-behavior:contain}
-.drawer-close{position:sticky;top:0;float:right;width:36px;height:36px;padding:0;border-radius:50%;z-index:3;font-size:16px}
-.drawer-header{position:sticky;top:0;z-index:1;margin:-24px -24px 0;padding:24px 68px 14px 24px}
+.drawer-close{position:absolute;top:16px;right:16px;float:none;width:36px;height:36px;padding:0;border-radius:50%;z-index:3;font-size:16px}
+.drawer-header{position:relative;top:auto;z-index:auto;margin:0 0 18px;padding:0 56px 0 0}
+.frontline-investigation>.investigation-hero{margin-top:0}
 
 @media (max-width:1100px){.demo-intro{grid-template-columns:1fr;gap:16px}}
 @media (max-width:760px){
   :root{--ns-topbar-height:0px}
   .topbar{align-items:flex-start;flex-direction:column;padding:14px 16px}
+  .brand-wordmark{min-width:166px;height:38px}
+  .brand-wordmark svg{width:166px;height:38px}
   .security-strip{justify-content:flex-start}
   main{padding:14px}
   .proof-chain{overflow-x:auto}
   .drawer-backdrop{top:0}
   .drawer{top:0;width:100vw;height:100dvh;padding:20px}
-  .drawer-header{margin:-20px -20px 0;padding:20px 60px 12px 20px}
+  .drawer-close{top:12px;right:12px}
+  .drawer-header{margin:0 0 14px;padding:0 48px 0 0}
 }
