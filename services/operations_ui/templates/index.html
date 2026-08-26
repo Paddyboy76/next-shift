@@ -6,8 +6,6 @@
   <title>Next Shift — Operations Control</title>
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/frontline-theme.css">
-  <link rel="stylesheet" href="/static/frontline-polish.css">
-  <link rel="stylesheet" href="/static/visual-hierarchy.css">
   <script src="/static/theme.js" defer></script>
 </head>
 <body>
@@ -29,7 +27,7 @@
       <div>
         <span class="eyebrow">Synthetic hospital operations · applicable to any 24/7 enterprise</span>
         <h2 id="demo-intro-title">The handover ends. The work does not.</h2>
-        <p>Messy notes become trackable work routed to the right team. Completion requires trusted evidence and independent verification.</p>
+        <p>Messy notes become trackable work routed to the right team. A claim of completion is not proof — trusted evidence and independent verification are required before anything closes.</p>
       </div>
       <ol class="proof-chain" aria-label="Operational lifecycle">
         <li class="proof-stage proof-stage-interpret"><strong>1</strong><span>Interpret</span></li>
@@ -55,86 +53,10 @@
           <span id="spoken-status">Optional · Gemini transcription · review required</span>
         </div>
         <div class="intake-actions">
-          <button id="submit-handover">Send to Next Shift</button>
+          <button id="submit-handover" class="primary-button">Send to Next Shift</button>
           <button id="load-demo-handover" class="secondary-button" type="button">Load six-team synthetic handover</button>
           <div id="intake-status"></div>
         </div>
-      </article>
-
-      <article class="panel metric-panel">
-        <span class="eyebrow">Operational state</span>
-        <div class="metrics">
-          <div class="metric-open"><strong id="metric-open">—</strong><span>Open work</span></div>
-          <div class="metric-verifying"><strong id="metric-verifying">—</strong><span>Verifying</span></div>
-          <div class="metric-review"><strong id="metric-review">—</strong><span>Human review</span></div>
-          <div class="metric-closed"><strong id="metric-closed">—</strong><span>Verified closed</span></div>
-        </div>
-      </article>
-    </section>
-
-    <section class="workspace">
-      <div class="board-area">
-        <div class="section-title">
-          <div>
-            <span class="eyebrow">Live issue board</span>
-            <h2>Operational work</h2>
-          </div>
-          <span id="last-refresh">Loading…</span>
-        </div>
-
-        <section id="attention-section" class="attention-section hidden" aria-labelledby="attention-heading">
-          <div class="subsection-heading">
-            <div>
-              <span class="eyebrow">Requires intervention</span>
-              <h3 id="attention-heading">Needs attention now</h3>
-            </div>
-            <span class="subtle-note">Only blocked, failed, human-review, or claimed work</span>
-          </div>
-          <div id="attention-work" class="attention-work"></div>
-        </section>
-
-        <section class="worklist-section" aria-labelledby="worklist-heading">
-          <div class="subsection-heading worklist-heading-row">
-            <div>
-              <span class="eyebrow">Current queue</span>
-              <h3 id="worklist-heading">Open work</h3>
-            </div>
-            <span class="subtle-note">Priority first · then newest</span>
-          </div>
-          <div id="owner-filters" class="owner-filters" aria-label="Filter work by owner"></div>
-          <div id="board" class="worklist"></div>
-        </section>
-
-        <section class="inactive-section" aria-labelledby="inactive-heading">
-          <details id="inactive-work">
-            <summary>
-              <span><span class="eyebrow">History</span><strong id="inactive-heading">Closed and failed work</strong></span>
-              <span id="inactive-count" class="subtle-note">0 items</span>
-            </summary>
-            <div id="inactive-board" class="inactive-board"></div>
-          </details>
-        </section>
-      </div>
-
-      <aside class="panel shift-panel">
-        <div class="panel-heading">
-          <div><span class="eyebrow">Continuity</span><h2>Shift snapshots</h2></div>
-        </div>
-        <div id="shift-list"></div>
-      </aside>
-    </section>
-
-    <section class="platform-grid">
-      <article class="panel platform-panel">
-        <span class="eyebrow">Historical intelligence · advisory only</span>
-        <h2>Operational Improvement Advisor</h2>
-        <p class="platform-disclaimer">Memory Bank provides historical context. Firestore alone establishes current work state.</p>
-        <div id="intelligence-panel" class="platform-content">Loading advisory intelligence…</div>
-      </article>
-      <article class="panel platform-panel">
-        <span class="eyebrow">Google Agent Platform</span>
-        <h2>Runtime lifecycle & observability</h2>
-        <div id="platform-panel" class="platform-content">Loading platform evidence…</div>
       </article>
     </section>
   </main>
