@@ -16,6 +16,23 @@ if [[ "${ACTIVE_PROJECT}" != "${PROJECT_ID}" ]]; then
     exit 1
 fi
 
+HUMAN_REACH_URL="$(gcloud run services describe next-shift-human-reach \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
+    --format='value(status.url)')"
+
+if [[ -z "${HUMAN_REACH_URL}" ]]; then
+    printf 'ERROR: Human Reach service URL not found\n'
+    exit 1
+fi
+
+gcloud run services add-iam-policy-binding next-shift-human-reach \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/run.invoker" \
+    --quiet >/dev/null
+
 gcloud run deploy "${SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
@@ -23,7 +40,7 @@ gcloud run deploy "${SERVICE}" \
     --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILDER_ACCOUNT}" \
     --service-account="${SERVICE_ACCOUNT}" \
     --no-allow-unauthenticated \
-    --update-env-vars="SPOKEN_HANDOVER_MODEL=${MODEL}" \
+    --update-env-vars="SPOKEN_HANDOVER_MODEL=${MODEL},HUMAN_REACH_URL=${HUMAN_REACH_URL}" \
     --quiet
 
 LIVE_MODEL="$(gcloud run services describe "${SERVICE}" \
