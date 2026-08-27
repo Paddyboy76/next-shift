@@ -4,6 +4,7 @@ set -euo pipefail
 
 PROJECT_ID="next-shift-506004"
 REGION="asia-southeast1"
+EXPECTED_MODEL="gemini-3.5-flash"
 
 if [[ "$(gcloud config get-value project 2>/dev/null)" != "${PROJECT_ID}" ]]; then
     printf 'ERROR active_project=%s expected=%s\n' \
@@ -30,31 +31,43 @@ done
 
 OPS_JSON="$(mktemp)"
 HR_JSON="$(mktemp)"
+CRITIC_JSON="$(mktemp)"
 MEMORY_JSON="$(mktemp)"
-trap 'rm -f "${OPS_JSON}" "${HR_JSON}" "${MEMORY_JSON}"' EXIT
+trap 'rm -f "${OPS_JSON}" "${HR_JSON}" "${CRITIC_JSON}" "${MEMORY_JSON}"' EXIT
 
 gcloud run services describe next-shift-operations \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --format=json >"${OPS_JSON}"
-
+    --project="${PROJECT_ID}" --region="${REGION}" --format=json >"${OPS_JSON}"
 gcloud run services describe next-shift-human-reach \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --format=json >"${HR_JSON}"
-
+    --project="${PROJECT_ID}" --region="${REGION}" --format=json >"${HR_JSON}"
+gcloud run services describe next-shift-coverage-critic \
+    --project="${PROJECT_ID}" --region="${REGION}" --format=json >"${CRITIC_JSON}"
 gcloud run services describe next-shift-memory-sync \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --format=json >"${MEMORY_JSON}"
+    --project="${PROJECT_ID}" --region="${REGION}" --format=json >"${MEMORY_JSON}"
 
 SPOKEN_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="SPOKEN_HANDOVER_MODEL") | .value' "${OPS_JSON}")"
 OPS_PHOTO_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="PHOTO_EVIDENCE_MODEL") | .value' "${OPS_JSON}")"
 HR_PHOTO_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="PHOTO_EVIDENCE_MODEL") | .value' "${HR_JSON}")"
+CRITIC_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="CRITIC_MODEL") | .value' "${CRITIC_JSON}")"
 ADVISOR_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="ADVISOR_MODEL") | .value' "${MEMORY_JSON}")"
 
-printf 'GEMINI     spoken=%s  photo=%s  chat_photo=%s  memory_advisor=%s\n' \
-    "${SPOKEN_MODEL:-UNKNOWN}" "${OPS_PHOTO_MODEL:-UNKNOWN}" "${HR_PHOTO_MODEL:-UNKNOWN}" "${ADVISOR_MODEL:-UNKNOWN}"
+printf 'GEMINI     spoken=%s  critic=%s  photo=%s  chat_photo=%s  memory=%s\n' \
+    "${SPOKEN_MODEL:-UNKNOWN}" "${CRITIC_MODEL:-UNKNOWN}" "${OPS_PHOTO_MODEL:-UNKNOWN}" \
+    "${HR_PHOTO_MODEL:-UNKNOWN}" "${ADVISOR_MODEL:-UNKNOWN}"
+
+for configured_model in \
+    "${SPOKEN_MODEL}" \
+    "${CRITIC_MODEL}" \
+    "${OPS_PHOTO_MODEL}" \
+    "${HR_PHOTO_MODEL}" \
+    "${ADVISOR_MODEL}"
+do
+    if [[ "${configured_model}" != "${EXPECTED_MODEL}" ]]; then
+        printf 'MODEL_ASSERT all_demo_gemini_3_5=false expected=%s found=%s\n' \
+            "${EXPECTED_MODEL}" "${configured_model:-MISSING}"
+        exit 1
+    fi
+done
+printf 'MODEL_ASSERT all_demo_gemini_3_5=true\n'
 
 GATEWAY_PROOF="$(gcloud logging read \
     'resource.type="cloud_run_job" AND resource.labels.job_name="next-shift-gateway-trace-proof" AND jsonPayload.event_type="gateway.model_armor_trace_proof" AND jsonPayload.benign_decision="ALLOW" AND jsonPayload.bypass_decision="DENY" AND jsonPayload.fail_open=false' \
@@ -69,6 +82,7 @@ if [[ -n "${GATEWAY_PROOF}" ]]; then
         "${TRACE_ID}" "${BENIGN_HTTP}" "${BYPASS_HTTP}"
 else
     printf 'GATEWAY    proof=NOT_FOUND\n'
+    exit 1
 fi
 
 STALE_PROOF="$(gcloud logging read \
@@ -84,6 +98,7 @@ if [[ -n "${STALE_PROOF}" ]]; then
         "${STALE_ISSUE}" "${EXPECTED_STATE}" "${CURRENT_STATE}"
 else
     printf 'STALE_CHAT proof=NOT_FOUND\n'
+    exit 1
 fi
 
 RECOVERY_PROOF="$(gcloud logging read \
@@ -99,6 +114,7 @@ if [[ -n "${RECOVERY_PROOF}" ]]; then
         "${RECOVERY_ISSUE}" "${RECOVERY_PLAN}"
 else
     printf 'RECOVERY   proof=NOT_FOUND\n'
+    exit 1
 fi
 
 printf '=== END LIVE PROOF ===\n'
