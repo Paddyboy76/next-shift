@@ -1,4 +1,5 @@
 Flask==3.1.3
 gunicorn==23.0.0
 google-auth==2.56.3
+google-cloud-storage==3.8.0
 requests==2.34.2
