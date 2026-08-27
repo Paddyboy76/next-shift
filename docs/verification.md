@@ -44,6 +44,16 @@ FAIL=0
 NEXT_SHIFT_READINESS=PASS
 ```
 
+## Compact live demo proof
+
+For the demo video, use the read-only compact snapshot instead of manually typing multiple gcloud queries:
+
+```bash
+bash scripts/demo_proof_snapshot.sh
+```
+
+It prints current Cloud Run revisions and service identities, Gemini 3.5 serving configuration, the latest Gateway/Model Armor `200 / 403` proof, the stale Human Reach denial, and the latest controlled-recovery sanction. It does not mutate workflow state or create work.
+
 ## Gateway and Model Armor behavior
 
 Run the full repeatable probe:
