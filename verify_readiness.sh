@@ -278,7 +278,7 @@ if [[ -s "${OPS_FILE}" ]]; then
         "https://next-shift-recovery-planner-mycnigy7dq-as.a.run.app" \
         "Operations uses the controlled Recovery Planner"
     expect_equal "$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name == "SPOKEN_HANDOVER_MODEL") | .value' "${OPS_FILE}")" \
-        "gemini-2.5-flash" \
+        "gemini-3.5-flash" \
         "Operations uses Gemini spoken handover transcription"
 fi
 
@@ -330,9 +330,9 @@ check_invokers next-shift-evs-throughput \
 check_invokers next-shift-patient-transport \
     "serviceAccount:ns-push-patient-transport@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-human-reach \
-    "serviceAccount:ns-push-human-reach@${PROJECT_ID}.iam.gserviceaccount.com"
+    "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-push-human-reach@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-trusted-evidence \
-    "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
+    "serviceAccount:ns-human-reach@${PROJECT_ID}.iam.gserviceaccount.com,serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-verifier \
     "serviceAccount:ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 check_invokers next-shift-coverage-critic \
