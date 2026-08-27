@@ -35,6 +35,23 @@ from trace import build_lifecycle_trace
 app = Flask(__name__)
 
 
+def _coverage_review_explanation(review: dict) -> str:
+    summary = str(review.get("summary") or "").strip()
+    findings = review.get("findings")
+    parts: list[str] = []
+    if summary:
+        parts.append(summary)
+    if isinstance(findings, list):
+        for finding in findings[:3]:
+            if not isinstance(finding, dict):
+                continue
+            finding_type = str(finding.get("type") or "review").replace("_", " ").title()
+            detail = str(finding.get("detail") or "").strip()
+            if detail:
+                parts.append(f"{finding_type}: {detail}")
+    return " ".join(parts).strip()
+
+
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -258,6 +275,7 @@ def intake():
     held = list(arbitration["held"])
 
     if not dispatchable:
+        explanation = _coverage_review_explanation(coverage_review)
         result.update(
             {
                 "status": "human_review_required",
@@ -267,8 +285,9 @@ def intake():
                 "held_proposals": held,
                 "review_required": True,
                 "message": (
-                    "Coverage review found a blocking routing/duplication concern that could not be safely bounded. "
+                    "Coverage review found a blocking routing/duplication concern. "
                     "No operational work was dispatched."
+                    + (f" Review: {explanation}" if explanation else "")
                 ),
             }
         )
