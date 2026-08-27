@@ -116,7 +116,12 @@ document.querySelector("#record-handover").addEventListener("click", async () =>
         if (!response.ok) throw new Error(result?.message || `${response.status}`);
         document.querySelector("#handover").value = result.transcript;
         spokenReceipt = result.receipt;
-        const uncertainty = result.uncertain_segments?.length ? ` · review ${result.uncertain_segments.length} uncertain segment(s)` : "";
+        const uncertainSegments = Array.isArray(result.uncertain_segments)
+          ? result.uncertain_segments.filter((item) => typeof item === "string" && item.trim()).slice(0, 3)
+          : [];
+        const uncertainty = uncertainSegments.length
+          ? ` · check: ${uncertainSegments.map((item) => `“${item.trim()}”`).join("; ")}`
+          : "";
         status.textContent = `Gemini transcript ready · review before sending${uncertainty} · audit ${result.receipt.audit_reference}`;
       } catch (error) {
         spokenReceipt = null;
