@@ -15,9 +15,10 @@ from vertexai.generative_models import GenerationConfig, GenerativeModel
 
 PROJECT = "next-shift-506004"
 LOCATION = "asia-southeast1"
+MODEL_LOCATION = "global"
 ENGINE = "projects/963749706976/locations/asia-southeast1/reasoningEngines/8140616966286082048"
 SCOPE = {"context": "next-shift-operational-intelligence"}
-MODEL = os.environ.get("ADVISOR_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("ADVISOR_MODEL", "gemini-3.5-flash")
 META_PREFIX = "NS_ADVISORY_V2_META "
 RECOMMENDATION_PREFIX = "NS_ADVISORY_V2_RECOMMENDATION "
 MAX_MEMORY_CONTEXT = 5
@@ -87,6 +88,9 @@ def generate_recommendations(aggregate: dict[str, Any], memory_context: list[dic
         "historical_aggregate": aggregate,
         "managed_memory_context": memory_context,
     }
+    # Gemini 3.5 is served through the global Vertex AI model endpoint while the
+    # managed Memory Bank itself remains in the project's asia-southeast1 Agent Runtime.
+    vertexai.init(project=PROJECT, location=MODEL_LOCATION)
     response = GenerativeModel(MODEL).generate_content(
         json.dumps(prompt, sort_keys=True),
         generation_config=GenerationConfig(temperature=0.2, response_mime_type="application/json", response_schema={
@@ -181,7 +185,7 @@ def inspect_intelligence() -> dict[str, Any]:
 
 @app.get("/health")
 def health():
-    return jsonify({"status": "ok", "service": "next-shift-memory-sync"})
+    return jsonify({"status": "ok", "service": "next-shift-memory-sync", "model": MODEL})
 
 
 @app.post("/v1/sync")
