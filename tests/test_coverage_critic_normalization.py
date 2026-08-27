@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from services.coverage_critic_runtime.main import normalize_review
+from services.coverage_critic_runtime.main import _apply_scopes, normalize_review
 
 
 def test_pass_may_keep_advisory_uncertainty():
@@ -57,6 +57,27 @@ def test_model_shape_noise_is_normalized_before_state_authority():
     assert result["decision"] == "REVIEW_REQUIRED"
     assert result["summary"]
     assert result["findings"][0]["type"] == "UNCERTAIN"
+
+
+def test_unscoped_blocker_cannot_nuke_entire_handover_after_scoping_fails():
+    review = {
+        "decision": "REVIEW_REQUIRED",
+        "summary": "Possible routing concern.",
+        "findings": [
+            {
+                "type": "MISROUTED",
+                "detail": "The critic did not identify which proposal is affected.",
+                "proposal_indexes": [],
+                "suggested_owner": "Facilities",
+            }
+        ],
+    }
+
+    result = _apply_scopes(review, scopes=[], proposal_count=4)
+
+    assert result["decision"] == "PASS"
+    assert result["findings"][0]["type"] == "UNCERTAIN"
+    assert result["findings"][0]["proposal_indexes"] == []
 
 
 def test_operations_intake_uses_bounded_arbitration_not_global_veto():
