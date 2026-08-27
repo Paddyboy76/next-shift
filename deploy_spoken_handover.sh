@@ -7,7 +7,7 @@ REGION="asia-southeast1"
 SERVICE="next-shift-operations"
 SERVICE_ACCOUNT="ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 BUILDER_ACCOUNT="ns-cloud-run-builder@${PROJECT_ID}.iam.gserviceaccount.com"
-MODEL="gemini-2.5-flash"
+MODEL="gemini-3.5-flash"
 SOURCE="/home/patrick/next-shift/services/operations_ui"
 
 ACTIVE_PROJECT="$(gcloud config get-value project 2>/dev/null)"
