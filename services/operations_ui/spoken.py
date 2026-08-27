@@ -15,7 +15,7 @@ import requests
 
 PROJECT_ID = "next-shift-506004"
 LOCATION = "global"
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash"
 MAX_AUDIO_BYTES = 4 * 1024 * 1024
 ALLOWED_AUDIO_TYPES = {
     "audio/mp3",
@@ -147,9 +147,6 @@ def transcribe_spoken_handover(*, audio: bytes, mime_type: str) -> dict[str, Any
         "audio_persisted": False,
         "operator_review_required": True,
     }
-    # Warning level is intentional: Gunicorn's default logging configuration
-    # reliably exports this audit event to Cloud Logging without recording the
-    # transcript or audio payload.
     logging.warning(
         json.dumps(
             {
