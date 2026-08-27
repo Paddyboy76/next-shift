@@ -18,6 +18,7 @@ ALLOWED_DECISIONS = frozenset({"PASS", "REVIEW_REQUIRED"})
 ALLOWED_FINDING_TYPES = frozenset(
     {"MISSED", "DUPLICATED", "CONFLATED", "MISROUTED", "UNCERTAIN"}
 )
+PASS_ADVISORY_FINDING_TYPES = frozenset({"UNCERTAIN"})
 
 
 def _now_iso() -> str:
@@ -28,6 +29,29 @@ def _text(value: Any, maximum: int) -> str:
     if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
         raise AuthorizationError(reason="invalid_coverage_review")
     return value.strip()
+
+
+def _validate_decision_findings(decision: str, cleaned: list[dict[str, Any]]) -> None:
+    """Keep PASS meaningful without treating ordinary uncertainty as failure.
+
+    PASS may carry UNCERTAIN findings because human handovers commonly contain
+    vague asset/component descriptions while still providing enough information
+    for a safe specialist investigation. Findings that imply missed, duplicated,
+    conflated, or misrouted work remain incompatible with PASS.
+    """
+
+    if decision == "PASS":
+        blocking = [
+            finding
+            for finding in cleaned
+            if finding.get("type") not in PASS_ADVISORY_FINDING_TYPES
+        ]
+        if blocking:
+            raise AuthorizationError(reason="invalid_coverage_review")
+        return
+
+    if decision == "REVIEW_REQUIRED" and not cleaned:
+        raise AuthorizationError(reason="invalid_coverage_review")
 
 
 def authorize_and_record_coverage_review(
@@ -59,10 +83,8 @@ def authorize_and_record_coverage_review(
             "proposal_indexes": finding.get("proposal_indexes", []),
             "suggested_owner": finding.get("suggested_owner"),
         })
-    if decision == "PASS" and cleaned:
-        raise AuthorizationError(reason="invalid_coverage_review")
-    if decision == "REVIEW_REQUIRED" and not cleaned:
-        raise AuthorizationError(reason="invalid_coverage_review")
+
+    _validate_decision_findings(str(decision), cleaned)
 
     ref = firestore.Client(project=PROJECT_ID).collection(COLLECTION).document()
     record = {
