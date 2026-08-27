@@ -9,7 +9,10 @@ from typing import Any
 
 import google.auth
 from google.auth.transport.requests import Request as GoogleAuthRequest
-from google.cloud import storage
+try:
+    from google.cloud import storage
+except ImportError:  # Local contract tests may run before optional runtime deps install.
+    storage = None
 import requests
 
 
@@ -21,6 +24,12 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 class PhotoEvidenceError(RuntimeError):
     pass
+
+
+def _storage_client():
+    if storage is None:
+        raise PhotoEvidenceError("google-cloud-storage is required for photo evidence")
+    return storage.Client(project=PROJECT_ID)
 
 
 def _bucket_name() -> str:
@@ -133,7 +142,7 @@ def store_photo_evidence(*, issue: dict[str, Any], before: bytes, before_type: s
         raise PhotoEvidenceError("Issue ID is required")
     evidence_id = f"visual-{uuid.uuid4()}"
     prefix = f"{issue_id}/{evidence_id}"
-    client = storage.Client(project=PROJECT_ID)
+    client = _storage_client()
     bucket = client.bucket(_bucket_name())
     before_name = f"{prefix}/before"
     after_name = f"{prefix}/after"
@@ -183,7 +192,7 @@ def inspect_and_store(*, issue: dict[str, Any], before: bytes, before_type: str,
 
 
 def list_photo_evidence(issue_id: str) -> list[dict[str, Any]]:
-    client = storage.Client(project=PROJECT_ID)
+    client = _storage_client()
     records: list[dict[str, Any]] = []
     for blob in client.list_blobs(_bucket_name(), prefix=f"{issue_id}/"):
         if not blob.name.endswith("/inspection.json"):
@@ -209,5 +218,5 @@ def image_bytes(issue_id: str, evidence_id: str, kind: str) -> tuple[bytes, str]
     mime_type = record.get(f"{kind}_mime_type")
     if not isinstance(object_name, str) or not isinstance(mime_type, str):
         raise KeyError(kind)
-    blob = storage.Client(project=PROJECT_ID).bucket(_bucket_name()).blob(object_name)
+    blob = _storage_client().bucket(_bucket_name()).blob(object_name)
     return blob.download_as_bytes(), mime_type
