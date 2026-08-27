@@ -92,6 +92,8 @@ The final deployed acceptance demonstrated:
 
 Final submission success is defined as clean current `main`, zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS`.
 
+The durable acceptance record is `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`. The final continuous live demo runbook is `docs/demo-script.md`.
+
 ## Google technology
 
 - Gemini 3.5 through Vertex AI
