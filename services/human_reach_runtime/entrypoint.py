@@ -2,6 +2,7 @@ from flask import jsonify
 from flask import request
 
 from auth import authorize_chat_request
+from auth import authorize_operations_request
 from auth import authorize_pubsub_request
 import durable_routes
 import main as human_reach_runtime
@@ -49,6 +50,21 @@ def verify_ingress_identity():
             return (
                 jsonify(
                     {"error": "pubsub_authentication_required"}
+                ),
+                401,
+            )
+
+    if (
+        request.method == "POST"
+        and request.path.startswith("/v1/human-reach/deliveries/")
+        and request.path.endswith("/refresh")
+    ):
+        if not authorize_operations_request(
+            authorization
+        ):
+            return (
+                jsonify(
+                    {"error": "operations_authentication_required"}
                 ),
                 401,
             )
