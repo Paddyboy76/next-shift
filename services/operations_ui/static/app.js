@@ -21,6 +21,37 @@ function closeDrawer() {
   backdrop.classList.add("hidden");
 }
 
+function intakeItemLabel(item, fallback) {
+  if (!item || typeof item !== "object") return fallback;
+  const title = typeof item.title === "string" && item.title.trim()
+    ? item.title.trim()
+    : fallback;
+  const owner = typeof item.owner === "string" && item.owner.trim()
+    ? ` (${item.owner.trim()})`
+    : "";
+  return `${title}${owner}`;
+}
+
+function intakeOutcomeText(payload) {
+  if (payload?.blocked) return `Blocked by security policy: ${payload.message}`;
+
+  const created = Array.isArray(payload?.issues) ? payload.issues : [];
+  const held = Array.isArray(payload?.held_proposals) ? payload.held_proposals : [];
+
+  if (!created.length && !held.length) return payload?.message || "Intake completed.";
+
+  const outcomes = [
+    ...created.map((item) => `${intakeItemLabel(item, "Operational issue")} — created`),
+    ...held.map((item) => `${intakeItemLabel(item, "Operational issue")} — held for review`),
+  ];
+
+  const reviewSummary = typeof payload?.coverage_review?.summary === "string"
+    ? payload.coverage_review.summary.trim()
+    : "";
+
+  return `${outcomes.join(" · ")}${reviewSummary ? `\n\nCoverage review: ${reviewSummary}` : ""}`;
+}
+
 document.querySelector("#drawer-close").addEventListener("click", closeDrawer);
 backdrop.addEventListener("click", closeDrawer);
 document.addEventListener("keydown", (event) => {
@@ -56,7 +87,7 @@ document.querySelector("#submit-handover").addEventListener("click", async () =>
     if (payload === null) {
       throw new Error("Invalid JSON response from governed intake");
     }
-    status.textContent = payload.blocked ? `Blocked by security policy: ${payload.message}` : payload.message;
+    status.textContent = intakeOutcomeText(payload);
     if (!payload.blocked) {
       textarea.value = "";
       spokenReceipt = null;
