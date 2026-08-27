@@ -95,11 +95,19 @@ The final branch acceptance proved all of the following against the deployed pro
 
 The final submission condition is stricter: clean current `main`, zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS`.
 
+See the durable acceptance record at [Mission 100 — Final Product Acceptance](docs/autonomy/evidence/100-final-product-acceptance-20260827.md).
+
 ## Verify before believing the claims
 
 ```bash
 gcloud config set project next-shift-506004
 bash verify_readiness.sh
+```
+
+For a compact read-only live proof during the demo:
+
+```bash
+bash scripts/demo_proof_snapshot.sh
 ```
 
 Additional verification:
