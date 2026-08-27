@@ -17,6 +17,7 @@ for service in \
     next-shift-operations \
     next-shift-human-reach \
     next-shift-coverage-critic \
+    next-shift-memory-sync \
     next-shift-state-authority \
     next-shift-verifier
 do
@@ -29,7 +30,8 @@ done
 
 OPS_JSON="$(mktemp)"
 HR_JSON="$(mktemp)"
-trap 'rm -f "${OPS_JSON}" "${HR_JSON}"' EXIT
+MEMORY_JSON="$(mktemp)"
+trap 'rm -f "${OPS_JSON}" "${HR_JSON}" "${MEMORY_JSON}"' EXIT
 
 gcloud run services describe next-shift-operations \
     --project="${PROJECT_ID}" \
@@ -41,12 +43,18 @@ gcloud run services describe next-shift-human-reach \
     --region="${REGION}" \
     --format=json >"${HR_JSON}"
 
+gcloud run services describe next-shift-memory-sync \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
+    --format=json >"${MEMORY_JSON}"
+
 SPOKEN_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="SPOKEN_HANDOVER_MODEL") | .value' "${OPS_JSON}")"
 OPS_PHOTO_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="PHOTO_EVIDENCE_MODEL") | .value' "${OPS_JSON}")"
 HR_PHOTO_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="PHOTO_EVIDENCE_MODEL") | .value' "${HR_JSON}")"
+ADVISOR_MODEL="$(jq -r '.spec.template.spec.containers[0].env[]? | select(.name=="ADVISOR_MODEL") | .value' "${MEMORY_JSON}")"
 
-printf 'GEMINI     spoken=%s  operations_photo=%s  human_reach_photo=%s\n' \
-    "${SPOKEN_MODEL:-UNKNOWN}" "${OPS_PHOTO_MODEL:-UNKNOWN}" "${HR_PHOTO_MODEL:-UNKNOWN}"
+printf 'GEMINI     spoken=%s  photo=%s  chat_photo=%s  memory_advisor=%s\n' \
+    "${SPOKEN_MODEL:-UNKNOWN}" "${OPS_PHOTO_MODEL:-UNKNOWN}" "${HR_PHOTO_MODEL:-UNKNOWN}" "${ADVISOR_MODEL:-UNKNOWN}"
 
 GATEWAY_PROOF="$(gcloud logging read \
     'resource.type="cloud_run_job" AND resource.labels.job_name="next-shift-gateway-trace-proof" AND jsonPayload.event_type="gateway.model_armor_trace_proof" AND jsonPayload.benign_decision="ALLOW" AND jsonPayload.bypass_decision="DENY" AND jsonPayload.fail_open=false' \
