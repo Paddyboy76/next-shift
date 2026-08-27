@@ -8,6 +8,7 @@ from google.oauth2 import id_token
 
 
 CHAT_ISSUER = "chat@system.gserviceaccount.com"
+OPERATIONS_ISSUER = "ns-operations-ui@next-shift-506004.iam.gserviceaccount.com"
 
 
 def _audience() -> str:
@@ -116,4 +117,17 @@ def authorize_pubsub_request(
         claims is not None
         and claims.get("email")
         == _push_service_account()
+    )
+
+
+def authorize_operations_request(
+    authorization_header: str | None,
+) -> bool:
+    claims = _verified_claims(
+        authorization_header
+    )
+
+    return bool(
+        claims is not None
+        and claims.get("email") == OPERATIONS_ISSUER
     )
