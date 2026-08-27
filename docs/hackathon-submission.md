@@ -10,72 +10,104 @@
 
 ## One-line pitch
 
-Next Shift turns messy shift handovers into durable operational work and refuses to close anything until trusted evidence, independent inspection, and an independent verifier prove it is done.
+Next Shift turns messy human shift handovers into durable operational work across six enterprise channels and refuses to close anything until trusted evidence and an independent verifier prove it is done.
 
 ## Submission description
 
 Next Shift is a general handover and operational continuity system for 24/7 enterprises, demonstrated in a fully synthetic, non-clinical hospital operations environment.
 
-One unstructured handover becomes multiple persistent jobs. A managed ADK Agent Runtime interprets the text, while an independent Gemini Coverage Critic checks the proposed issue set for missed, duplicated, conflated, uncertain, or misrouted work. State Authority then persists accepted work in Firestore and publishes owner-routed events. Dedicated Cloud Run specialists continue the workflows asynchronously through Pub/Sub and coordinate frontline action through Google Chat.
+A human can type or speak an ordinary handover paragraph without knowing the schema. Gemini 3.5 normalizes the handover into distinct operational jobs across Facilities, Asset Logistics, Language Access, Discharge Equipment, EVS Throughput, and Patient Transport. A separate Gemini 3.5 Coverage Critic checks the proposed work for omissions, duplicates, conflation, routing errors, and uncertainty. Safe work continues while a genuinely disputed proposal can be held for review rather than silently disappearing or blocking unrelated jobs.
 
-No model, specialist, or human claim can certify completion. A frontline “Completed” action remains `CLAIMED · UNVERIFIED`. A trusted source-specific synthetic integration must record evidence, a separate Evidence Inspector must pass that exact evidence, and only the independent verifier can request closure.
+State Authority persists accepted work in Firestore and publishes owner-routed Pub/Sub events. Dedicated Cloud Run specialists continue the workflows asynchronously after the initiating interaction ends. Human Reach delivers frontline work through Google Chat, where people can acknowledge, report a blocker, or report completion.
+
+A completion claim is not proof. `Completed` remains `CLAIMED · UNVERIFIED`. For Facilities, the frontline worker can reply in the same Google Chat work thread with BEFORE and AFTER images. Gemini 3.5 compares the visible change, but the images are explicitly supporting evidence only. A separate trusted source-specific evidence identity must still record completion evidence, a separate Evidence Inspector must pass the exact evidence, and only the Independent Verifier can request `CLOSED`.
 
 ## Why it is agentic
 
-The system reasons about ambiguous input, decomposes it into typed work, criticizes its own coverage through a separate model call, selects specialist ownership, and initiates durable asynchronous execution. The work continues after the user leaves: specialists wake from events, resume from current state, coordinate humans, wait for external proof, recover safely from delay or rejection, and independently verify outcomes.
+Next Shift does more than answer a prompt. It:
 
-The model does not own truth. Agentic reasoning is deliberately bounded by deterministic contracts, persisted state, identities, and independent proof.
+- understands messy text or spoken handover input;
+- decomposes one handover into multiple typed jobs, including repeated jobs for the same owner;
+- runs a second independent Gemini coverage review;
+- persists accepted work so it survives the initiating interaction and shift boundary;
+- wakes dedicated specialists asynchronously through owner-filtered Pub/Sub;
+- coordinates frontline humans through Google Chat;
+- waits for external proof instead of trusting a completion claim;
+- uses a separate inspector and verifier for closure;
+- preserves unresolved work across shifts;
+- uses Memory Bank for persistent advisory historical patterns;
+- can recommend bounded recovery from delayed or rejected work without giving the planner mutation authority.
+
+The model reasons. The governed fleet owns execution and truth.
 
 ## Why it is fortified
 
-- Agent Runtime uses managed Agent Identity and is represented in Agent Registry.
-- Agent Gateway governs the real `CLIENT_TO_AGENT` path; fail-closed Model Armor content authorization blocks a controlled instruction-bypass probe.
-- Operations Control is protected by IAP.
-- State Authority is the sole Next Shift Firestore writer.
-- Six specialists have dedicated Cloud Run identities and owner-filtered Pub/Sub subscriptions with OIDC audiences.
-- Principal/capability/owner/state rules are deterministic and denials are auditable.
-- Duplicate handling is idempotent; retries are bounded; poison events reach a DLQ.
-- Evidence, inspector, and verifier are separate identities with no direct Firestore access.
-- Recovery Planner is advisory, cannot mutate/record evidence/close, and requires explicit sanction against fresh state.
-- Memory Bank advice is `ADVISORY_ONLY`; Firestore remains current-state authority.
+- **Agent Registry:** the managed Next Shift runtime is cataloged as a registered agent/service for governed lifecycle and enterprise discovery.
+- **Agent Runtime + Google ADK:** long-running managed reasoning with managed Agent Identity.
+- **Memory Bank:** persistent historical context across sessions while Firestore remains current-state authority.
+- **Agent Identity / IAM:** every service-to-service capability is bound to a narrow runtime identity.
+- **Agent Gateway:** the live managed runtime is bound through the `CLIENT_TO_AGENT` governed path.
+- **Model Armor:** fail-closed content authorization blocks a controlled prompt-injection/instruction-bypass attempt.
+- **Operations Control:** protected by IAP.
+- **State Authority:** sole Next Shift Firestore writer and deterministic mutation choke point.
+- **Six specialists:** dedicated Cloud Run identities and owner-filtered Pub/Sub subscriptions with OIDC audiences.
+- **Reliability:** processed-event idempotency, bounded retries, and dead-letter handling.
+- **Evidence separation:** Human Reach, visual comparison, trusted evidence, Evidence Inspector, and Independent Verifier have distinct authority.
+- **Recovery separation:** Recovery Planner is advisory and requires a separate sanction against current authoritative state.
+- **Observability:** durable lifecycle correlation plus inspectable Cloud Logging / Cloud Run telemetry, denial records, proof traces, and live serving revisions.
 
 ## Defining product moment
 
-A frontline worker clicks **Completed** in Google Chat. Next Shift does not close the issue. It records an unverified claim, waits for independently sourced synthetic evidence, requires an exact-evidence inspection PASS, and permits only the separate verifier to close the work.
+A Facilities worker receives a job in Google Chat and taps **Completed**.
+
+Next Shift does not close the issue.
+
+The Chat card becomes an unverified completion claim and asks the worker to reply in that job thread with BEFORE and AFTER photos. Gemini 3.5 compares what is visibly supported. If the pair supports the repair, the images are stored privately as supporting evidence and a separate trusted Facilities integration records source-specific evidence. The issue moves to `VERIFYING`. A separate Evidence Inspector checks the exact evidence, and only the Independent Verifier can close it. The Google Chat card then refreshes to green **Verified complete**.
 
 That implements the core rule:
 
 > No agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable.
 
-## Deployed proof
+## Deployed live proof
 
-The live synthetic project has demonstrated:
+The final deployed acceptance demonstrated:
 
-- one handover producing six correctly routed operational jobs;
-- independent intake critique and visible disagreement handling;
-- Google Chat delivery to durable operational spaces;
-- duplicate ACK without duplicate state mutation;
+- one messy handover producing multiple correctly routed jobs;
+- repeated Facilities work remaining separate instead of being conflated;
+- a disputed printer-repair proposal being held while unrelated safe work continued;
+- spoken Gemini 3.5 handover transcription and end-to-end governed intake;
+- Google Chat delivery and authoritative card refresh;
+- a frontline completion claim remaining unverified;
+- Facilities BEFORE/AFTER images submitted in the Chat work thread and compared by Gemini 3.5;
+- separate trusted evidence moving work to `VERIFYING`;
+- Evidence Inspector + Independent Verifier closing the exact issue;
+- Chat refreshing to green **Verified complete**;
+- stale Chat completion action denied with `reason=human_reach_stale_response` and no state mutation;
+- duplicate event handling without duplicate mutation;
 - bounded malformed-event retry and DLQ delivery;
-- external synthetic evidence, exact-evidence inspection, and independent closure;
-- stale Chat action denial with unchanged authoritative state;
-- a full governed lifecycle trace;
-- registered runtime lifecycle and managed advisory Memory Bank intelligence;
-- a controlled recovery plan, separate sanction, fresh evidence, and independent closure;
-- benign HTTP 200 and instruction-bypass HTTP 403 through the bound Runtime/Gateway/Model Armor path.
+- cross-shift continuity using current Firestore truth;
+- a controlled recovery plan and separate `recovery_action_sanctioned` proof;
+- Agent Gateway / Model Armor behavioral proof with benign HTTP `200 / ALLOW`, instruction-bypass HTTP `403 / DENY`, and `fail_open=false`;
+- final branch readiness: `179 PASS / 1 authorized branch warning / 0 FAIL / NEXT_SHIFT_READINESS=PASS`.
 
-The read-only readiness gate has expanded beyond its `159 PASS / 0 WARN / 0 FAIL` golden baseline. Current success is defined by zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS` on clean current `main`, not by freezing the earlier check count.
+Final submission success is defined as clean current `main`, zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS`.
 
 ## Google technology
 
-- Vertex AI Agent Runtime, Google ADK, Gemini, and managed Agent Identity
-- Agent Registry and Memory Bank
-- Agent Gateway and Model Armor
-- Cloud Run, IAM, IAP, Pub/Sub, and Firestore
-- Google Chat Human Reach
+- Gemini 3.5 through Vertex AI
+- Google ADK
+- Vertex AI Agent Runtime + managed Agent Identity
+- Agent Registry
+- Memory Bank
+- Agent Gateway
+- Model Armor
+- Cloud Run
+- IAM and IAP
+- Pub/Sub
+- Firestore
+- Google Chat
 - Cloud Logging and Cloud Run request telemetry
-
-The governed issue trace uses real durable correlation records alongside real Cloud Run trace/span fields. Native application OTLP spans are not claimed because export was unavailable at the current permission boundary.
 
 ## Safety and scope
 
-All data, workspaces, evidence, and integration records are synthetic. The product is non-clinical and has no authority over diagnosis, prescribing, clinical acuity decisions, treatment interpretation, or licensed clinical work. It uses no real hospital data, branding, screenshots, identifiers, internal systems, or proprietary workflows.
+All text, audio, images, workspaces, evidence, and integration records in the demonstration are synthetic. The product is non-clinical and has no authority over diagnosis, prescribing, clinical acuity decisions, treatment interpretation, or licensed clinical work. It uses no real hospital data, branding, screenshots, identifiers, internal systems, or proprietary workflows.
