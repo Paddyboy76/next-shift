@@ -37,6 +37,7 @@ These are scoped deployment units, not a blind one-command installer:
 | `deploy_recovery_planner.sh` | Recovery Planner and State Authority/Operations bindings |
 | `deploy_spoken_handover.sh` | current Operations deployment with Gemini 3.5 spoken handover, photo-evidence audit access, and Human Reach refresh binding |
 | `deploy_chat_photo_proof.sh` | current Human Reach Facilities photo-proof path plus the current Operations deployment |
+| `scripts/demo_proof_snapshot.sh` | read-only compact serving/security proof for demo and inspection; no mutation |
 
 Several older scripts redeploy shared services and may predate later environment bindings. Compare `--set-env-vars` and `--update-env-vars` behavior with the serving revision before use. For the final product, prefer the narrow current script associated with the changed path.
 
@@ -104,6 +105,7 @@ Final readiness expects, among other controls:
 ```bash
 bash verify_readiness.sh
 bash scripts/verify_gateway_model_armor_trace.sh
+bash scripts/demo_proof_snapshot.sh
 
 gcloud run services list \
   --project next-shift-506004 \
