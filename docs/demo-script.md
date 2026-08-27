@@ -137,7 +137,7 @@ Do not call it a fabricated single distributed trace. It is an authoritative lif
 
 ## 2:22–2:52 — one compact terminal proof of the Google stack
 
-Switch to Cloud Shell and run:
+Switch to Cloud Shell and run exactly:
 
 ```bash
 cd /home/patrick/next-shift
@@ -173,7 +173,7 @@ Then make the enterprise-generalization sentence explicit:
 
 ## 3:20–3:42 — final readiness proof
 
-Show a pre-run **clean-main** readiness terminal result, or run it only if rehearsal proves it completes comfortably inside the time budget.
+Use a **pre-run clean-main readiness result already visible in Cloud Shell**. Do not burn the last 20 seconds waiting for the entire gate to rerun unless rehearsal proves it consistently completes within the time budget.
 
 The screen must visibly show:
 
@@ -188,6 +188,8 @@ Do not hard-code an old PASS count in narration. The exact count grows as checks
 Say:
 
 > “The gate verifies live Cloud Run revisions, IAM and invoker isolation, Firestore authority, Pub/Sub routing and retry policy, stale-action denial, managed Agent Identity, Agent Gateway, Model Armor, and the recovery proof.”
+
+This is a truthful pre-run production gate result from the same deployed revision shown in the live demo, not a fabricated overlay.
 
 ## 3:42–4:00 — close
 
@@ -226,7 +228,13 @@ Before recording:
 ```bash
 cd /home/patrick/next-shift
 bash scripts/demo_proof_snapshot.sh
-bash verify_readiness.sh
+bash verify_readiness.sh | tee /tmp/next-shift-demo-readiness.log
+```
+
+Leave the final readiness lines visible or easily retrievable with:
+
+```bash
+tail -8 /tmp/next-shift-demo-readiness.log
 ```
 
 Confirm the proof snapshot returns live values and readiness ends with zero warnings/failures on clean main.
