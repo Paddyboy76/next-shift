@@ -28,10 +28,14 @@ def test_photo_evidence_is_facilities_supporting_evidence_not_closure():
     assert '"may_close_work": False' in module
 
 
-def test_photo_ui_loads_once_and_has_no_recovery_controls():
+def test_operations_photo_ui_is_read_only_audit_not_submission():
     html = INDEX.read_text(encoding="utf-8")
     source = PHOTO_JS.read_text(encoding="utf-8")
     assert '/static/photo-evidence.js' in html
     assert "root.dataset.photoEvidenceIssue = issueId" in source
-    assert "Submit before & after photo proof" in source
+    assert "Gemini visual comparison" in source
+    assert "Captured through Google Chat Human Reach" in source
+    assert 'type="file"' not in source
+    assert "Submit before & after photo proof" not in source
+    assert "/photo-evidence" not in source or 'method: "POST"' not in source
     assert "recovery" not in source.lower()
