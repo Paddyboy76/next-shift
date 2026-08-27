@@ -1,97 +1,261 @@
 # Next Shift final demo script
 
-## Objective
+## Goal
 
-In four minutes, prove that Next Shift is a governed operational fleet—not a summarizer, chatbot collection, or decorative dashboard. Use only prepared synthetic operational data and live, already-verified product paths.
+Deliver one **continuous, live, approximately four-minute** demonstration that proves Next Shift is a fortified operational fleet—not a summarizer, chatbot collection, or decorative dashboard.
 
-## 0:00–0:20 — opening
+Use only synthetic operational data and already-accepted live paths. Keep the product UI on screen for most of the demo. Use the terminal briefly for high-value Google Cloud proof, not as the main experience.
 
-“Every 24/7 operation has the same failure point: work crosses a shift, context gets compressed, and nobody can prove what happened next. Next Shift does not summarize the handover. It finishes the operational work left behind by it.”
+## Recording rules for this run
 
-Show the IAP-protected Operations Control home screen.
+- One continuous take. Do not splice together separate successes.
+- Rehearse the exact path immediately before recording.
+- Keep one browser window with three prepared tabs: **Operations**, **Google Chat**, and **Cloud Shell**.
+- Keep the terminal font large enough to read on a laptop screen.
+- Do not type long commands during the recording. Use the repository's read-only `scripts/demo_proof_snapshot.sh` for the terminal proof.
+- If a live model step stalls, narrate what is happening and stay truthful. Do not fake a success state.
+- Do not create or expose real hospital data, branding, screenshots, identifiers, or workflows.
 
-Point once to the visible `Interpret → Route → Execute → Prove → Verify` chain. It is the structure of the demonstration, not a simulated progress indicator.
+## What judges must understand by the end
 
-If the spoken path has been rehearsed successfully immediately before recording, record one short synthetic operational sentence, stop, and show the Gemini transcript plus audit reference. Review the text before sending. Otherwise use the prepared text directly; spoken input is optional and must never put the four-minute proof at risk.
+1. a normal human handover becomes several durable operational jobs;
+2. Gemini 3.5 is used for reasoning, speech, critique, and multimodal evidence support;
+3. work continues asynchronously after the initiating interaction;
+4. six specialists are isolated by owner and identity;
+5. a human completion claim is not trusted as proof;
+6. photo evidence can arrive through the frontline Google Chat workflow;
+7. trusted evidence and a separate verifier control closure;
+8. stale and unauthorized actions fail visibly;
+9. Agent Registry, Runtime, Memory Bank, Identity, Gateway, Model Armor, and observability are real deployed platform elements;
+10. the final deployed stack passes the readiness gate.
 
-## 0:20–0:55 — messy handover to governed work
+---
 
-Click **Load six-team synthetic handover**, review the prepared non-clinical text, then submit it. The button only fills the text box; submission still traverses the real governed path. The handover contains a missing wheelchair, interpreter coordination, home oxygen delivery, EVS turnaround, a leaking sink, and patient transport.
+## 0:00–0:18 — cold open on the trust boundary
 
-“The managed Agent Runtime decomposes one messy note into six typed proposals. A separate Gemini Coverage Critic checks for omissions, duplication, conflation, uncertainty, and routing errors. Only then does State Authority create durable Firestore work.”
+Start in **Google Chat** on the prepared synthetic Facilities leaking-tap work card.
 
-Show all six owners and the critic result. Do not claim success until the queue visibly contains the expected issues.
+Say:
 
-## 0:55–1:20 — least-privilege execution
+> “A frontline worker can say the job is complete. Next Shift does not trust that as proof.”
 
-“Owner-filtered Pub/Sub wakes six dedicated Cloud Run specialists. Each has its own identity and can request only its owner-specific capabilities. State Authority is the only runtime identity that writes workflow truth.”
+Click **Completed** once.
 
-Show one issue progressing to `ACTION_PENDING` and its principal/capability trace entries.
+Show the card becoming a completion claim and requesting BEFORE + AFTER photo proof instead of closing.
 
-## 1:20–2:05 — the trust boundary
+Then say:
 
-Open a prepared Google Chat work card and click **Completed**.
+> “That is the core design rule: a claim is not operational truth.”
 
-“A frontline person says the work is complete. Next Shift records the claim—but does not trust it as proof.”
+This is the hook. Do not start with architecture.
 
-Show `CLAIMED · UNVERIFIED`. Record trusted synthetic evidence, then show `VERIFYING`.
+## 0:18–0:48 — multimodal proof from the frontline workflow
 
-“A separate Evidence Inspector checks the exact evidence issuer, provenance, subject, capability, timestamp, and coverage. Only after PASS may the independent verifier request closure.”
+In the same Chat work thread, attach the rehearsed synthetic **BEFORE** and **AFTER** leaking-tap images and @mention Next Shift.
 
-Run verification and show `CLOSED · VERIFIED`, including evidence ID, inspector identity/result, and verifier identity.
+Show the fast Gemini 3.5 response.
 
-## 2:05–2:35 — trace and denial
+Say:
 
-Open `/trace/<issue_id>`.
+> “Gemini 3.5 compares what is visibly supported, but the images are supporting evidence only. Gemini still cannot close the work.”
 
-“This trace is assembled from authoritative durable records: intake, event, route, specialist, human claim, evidence, inspection, verifier, and final state. Cloud Run request telemetry remains separately inspectable; we do not fabricate one distributed trace.”
+Switch to Operations as the issue advances to **Stage 5 · Verify** and open the drawer. Briefly show the read-only before/after evidence and the trusted evidence entry.
 
-Show the prepared stale-action denial: `decision=DENY`, reason `human_reach_stale_response`, expected `ACTION_PENDING`, current `CLOSED`. Confirm that issue state and Human Reach history did not change.
+Run the existing **Independent Verifier** action.
 
-## 2:35–3:05 — controlled recovery
+Show `VERIFYING → CLOSED` and then switch back to the same Chat card for green **Verified complete**.
 
-Open the prepared delayed/rejected operational work example and generate a Recovery Planner recommendation.
+Say:
 
-“Recovery is also least privilege. The planner can understand current state and recommend an allowlisted next action, but it cannot mutate work, record evidence, change owner, or close anything.”
+> “A separate trusted evidence identity moved the work to verification. A separate Evidence Inspector checked the exact evidence. Only the Independent Verifier could close it.”
 
-Show the explicit Operations sanction and the `ADVISORY_NO_STATE_MUTATION_NO_CLOSURE` boundary. Then use the prepared proof of fresh evidence and independent closure; do not create a failure during recording.
+## 0:48–1:18 — messy spoken handover to durable work
 
-## 3:05–3:30 — platform and memory
+Return to Operations.
 
-Show the architecture diagram and Operational Improvement Advisor.
+Click **Record spoken handover** and speak one rehearsed, ordinary human paragraph containing several non-clinical jobs. Do not speak like a schema.
 
-“The ADK runtime uses managed Agent Identity and is registered in Agent Registry. Agent Gateway and fail-closed Model Armor govern the client-to-agent path. Gemini turns synthetic history into evidence-linked recommendations stored in Memory Bank, but memory is advisory only—Firestore remains current-state truth.”
+A good synthetic example:
 
-Briefly show recommendation provenance and `may_mutate_workflow=false`.
+> “The printer on seven isn't printing and the light keeps blinking, the meeting room aircon is leaking again, there’s water coming from something in the kitchen cupboard on eight, and the cupboard door itself is hanging loose.”
 
-## 3:30–3:50 — security proof
+Stop recording. Show the Gemini 3.5 transcript and any explicit uncertain phrase. Do not clean up ordinary wording merely to help the system.
 
-Show the prepared successful output of:
+Click **Send to Next Shift**.
+
+Point to the explicit intake outcomes: created jobs and any held-for-review item.
+
+Say:
+
+> “Gemini 3.5 normalizes messy human language into our six canonical channels. A second Gemini Coverage Critic checks omissions, duplication, conflation, uncertainty, and routing. Safe jobs keep moving; disputed work is held instead of silently lost.”
+
+If the printer is held because none of the six channels clearly owns printer repair, that is a good boundary demonstration. Do not imply there is an IT agent.
+
+## 1:18–1:38 — show the fleet, then let the user leave
+
+Show the team strip and several newly created Facilities jobs as distinct cards.
+
+Say:
+
+> “The user is done. The work is not.”
+
+Move away from the intake area—open another tab or simply stop interacting with Operations for several seconds while the cards progress asynchronously.
+
+Say:
+
+> “State Authority persists every job in Firestore. Owner-filtered Pub/Sub wakes dedicated Cloud Run specialists. The initiating user does not need to stay connected.”
+
+Show one issue reaching `ACTION_PENDING` without another handover interaction.
+
+## 1:38–2:00 — cross-shift continuity and Memory Bank
+
+Open **Past**.
+
+Show:
+
+- Completed history;
+- Shift snapshots / carried work;
+- Improvement Advisor recommendations.
+
+Say:
+
+> “Current state and historical memory are deliberately separate. Firestore is authoritative now. Shift snapshots preserve what crossed the handover. Memory Bank carries longer-term synthetic patterns across sessions, but it is advisory only and cannot mutate work.”
+
+This directly answers the Fortified track's extended-context requirement.
+
+## 2:00–2:22 — full lifecycle trace
+
+Open the completed leaking-tap issue and its **Full audit trail**.
+
+Point to the latest event first and the collapsed earlier history.
+
+Say:
+
+> “This is durable operational correlation: intake, route, specialist action, human claim, visual support, trusted evidence, inspection, verifier, and closure—with exact principals, timestamps, and evidence IDs preserved.”
+
+Do not call it a fabricated single distributed trace. It is an authoritative lifecycle trace plus real Cloud platform telemetry.
+
+## 2:22–2:52 — one compact terminal proof of the Google stack
+
+Switch to Cloud Shell and run:
 
 ```bash
-bash scripts/verify_gateway_model_armor_trace.sh
+cd /home/patrick/next-shift
+bash scripts/demo_proof_snapshot.sh
 ```
 
-Point to benign HTTP 200, instruction-bypass HTTP 403, managed identity, fail-open false, and inspectable trace ID. The probe creates no operational work.
+Pause long enough for the output to be readable.
 
-Show only the final readiness summary from clean current `main`: zero warnings, zero failures, `NEXT_SHIFT_READINESS=PASS`. Do not hard-code the pre-autonomy pass count as the current count.
+Point to only four things:
 
-## 3:50–4:00 — close
+1. **Cloud Run revisions + service identities** for Operations, Human Reach, Coverage Critic, State Authority, and Verifier;
+2. **Gemini 3.5** serving for spoken handover and photo proof;
+3. **Gateway / Model Armor:** benign `200 / ALLOW`, bypass `403 / DENY`, `fail_open=false`;
+4. **State Authority security records:** stale Chat `DENY` and controlled recovery sanction `ALLOW`.
 
-“Next Shift is built around one principle: no agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable. The handover ends. The work does not.”
+Say:
 
-## Recording checklist
+> “These are live reads from the deployed Google Cloud project, not labels in the UI.”
 
-Capture and rehearse these live facts in advance:
+Do not scroll through dozens of services. The compact snapshot is enough.
 
-1. expected six-owner intake plus Coverage Critic result;
-2. specialist principal/capability trace;
-3. Google Chat claim remaining unverified;
-4. evidence ID, inspection PASS, verifier identity, and closed state;
-5. stale-action denial with unchanged state;
-6. sanctioned recovery boundary and completed recovery proof;
-7. Registry/Memory advisor provenance;
-8. Gateway/Model Armor behavioral proof;
-9. final clean-main readiness result.
+## 2:52–3:20 — Fortified Enterprise Fleet architecture
 
-If a live step fails, show the failure truthfully or use an already-inspected durable proof record. Never imply that a planned or configured feature executed when it did not.
+Return to the README architecture diagram or the clean architecture view.
+
+Say:
+
+> “The managed ADK runtime uses Agent Identity and is cataloged in Agent Registry. Agent Gateway and fail-closed Model Armor govern the client-to-agent path. Six Cloud Run specialists are isolated behind Pub/Sub and IAM. Memory Bank preserves advisory long-term context. State Authority is the only workflow writer.”
+
+Then make the enterprise-generalization sentence explicit:
+
+> “The hospital is synthetic demo data. These six channels could be maintenance, logistics, language support, room turnaround, transport, or equivalent operational teams in a factory, airline, hotel, utility, data center, or any 24/7 enterprise.”
+
+## 3:20–3:42 — final readiness proof
+
+Show a pre-run **clean-main** readiness terminal result, or run it only if rehearsal proves it completes comfortably inside the time budget.
+
+The screen must visibly show:
+
+```text
+WARN=0
+FAIL=0
+NEXT_SHIFT_READINESS=PASS
+```
+
+Do not hard-code an old PASS count in narration. The exact count grows as checks are added.
+
+Say:
+
+> “The gate verifies live Cloud Run revisions, IAM and invoker isolation, Firestore authority, Pub/Sub routing and retry policy, stale-action denial, managed Agent Identity, Agent Gateway, Model Armor, and the recovery proof.”
+
+## 3:42–4:00 — close
+
+Return to Operations or the green **Verified complete** Chat card.
+
+Say:
+
+> “Next Shift is built around one principle: no agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable. The handover ends. The work does not.”
+
+Stop.
+
+---
+
+## Pre-recording setup
+
+### Browser tabs
+
+1. **Operations Control** — authenticated through IAP.
+2. **Google Chat · Next Shift – Facilities Ops** — fresh leaking-tap card ready.
+3. **Cloud Shell** — authenticated, project `next-shift-506004`, repository on clean current `main`.
+4. Optional fourth tab: README architecture diagram positioned at the Mermaid diagram.
+
+### Synthetic demo assets
+
+Prepare two obvious images for the Facilities repair:
+
+- BEFORE: visibly leaking/broken tap or fitting;
+- AFTER: same subject/location with an obvious repaired/replaced state.
+
+Avoid ambiguous pairs such as “window open” vs “window closed.” Gemini correctly treats those as insufficient repair proof.
+
+### Terminal rehearsal
+
+Before recording:
+
+```bash
+cd /home/patrick/next-shift
+bash scripts/demo_proof_snapshot.sh
+bash verify_readiness.sh
+```
+
+Confirm the proof snapshot returns live values and readiness ends with zero warnings/failures on clean main.
+
+### Live facts to capture
+
+- Gemini 3.5 spoken transcript;
+- explicit created/held intake outcomes;
+- several distinct jobs from one human paragraph;
+- `CLAIMED · UNVERIFIED` after frontline completion;
+- Chat BEFORE/AFTER photo submission;
+- Gemini supporting visual comparison;
+- trusted evidence separated from visual support;
+- Evidence Inspector + Independent Verifier closure;
+- Chat green **Verified complete**;
+- durable lifecycle trace;
+- Cloud Run revisions and service identities;
+- Gateway/Model Armor `200 / 403` proof;
+- stale Human Reach `DENY`;
+- recovery sanction `ALLOW`;
+- clean-main `NEXT_SHIFT_READINESS=PASS`.
+
+## What not to do in the video
+
+- Do not spend 30 seconds typing terminal commands.
+- Do not show recovery-plan developer controls or manufacture a failure live.
+- Do not claim the printer belongs to Asset Logistics when no canonical channel clearly owns printer repair.
+- Do not describe Gemini photo comparison as trusted closure evidence.
+- Do not describe Memory Bank as current operational state.
+- Do not hide a live failure. If something fails, state what failed and show the authoritative state.
+- Do not show private keys, tokens, emails beyond service identities, or any non-synthetic hospital information.
+- Do not over-explain implementation details before the judge sees the product work.
