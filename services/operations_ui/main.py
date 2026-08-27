@@ -4,7 +4,6 @@ import uuid
 
 from flask import Flask
 from flask import jsonify
-from recovery import create_plan, sanction_plan
 from flask import render_template
 from flask import request
 
@@ -12,6 +11,7 @@ from completion import (
     record_trusted_completion,
     run_independent_verifier,
 )
+from coverage_arbitration import arbitrate_coverage
 from critique import review_coverage
 from data import (
     dashboard_summary,
@@ -19,18 +19,17 @@ from data import (
     list_issues,
     list_shift_snapshots,
 )
-from runtime import submit_handover
-from state_authority import (
-    persist_handover_proposals,
-)
-from trace import build_lifecycle_trace
 from intelligence import current_intelligence
+from recovery import create_plan, sanction_plan
+from runtime import submit_handover
 from spoken import (
     MAX_AUDIO_BYTES,
     SpokenHandoverError,
     transcribe_spoken_handover,
     validated_spoken_source,
 )
+from state_authority import persist_handover_proposals
+from trace import build_lifecycle_trace
 
 
 app = Flask(__name__)
@@ -38,28 +37,15 @@ app = Flask(__name__)
 
 @app.get("/")
 def index():
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 @app.get("/trace/<issue_id>")
-def lifecycle_trace_page(
-    issue_id: str,
-):
+def lifecycle_trace_page(issue_id: str):
     try:
-        bundle = get_issue_bundle(
-            issue_id
-        )
+        bundle = get_issue_bundle(issue_id)
     except KeyError:
-        return (
-            render_template(
-                "trace.html",
-                trace=None,
-                error="Issue not found",
-            ),
-            404,
-        )
+        return render_template("trace.html", trace=None, error="Issue not found"), 404
 
     return render_template(
         "trace.html",
@@ -70,21 +56,12 @@ def lifecycle_trace_page(
 
 @app.get("/health")
 def health():
-    return jsonify(
-        {
-            "status": "ok",
-            "service": (
-                "next-shift-operations"
-            ),
-        }
-    )
+    return jsonify({"status": "ok", "service": "next-shift-operations"})
 
 
 @app.get("/api/summary")
 def summary():
-    return jsonify(
-        dashboard_summary()
-    )
+    return jsonify(dashboard_summary())
 
 
 @app.get("/api/intelligence")
@@ -118,96 +95,42 @@ def platform():
 
 @app.get("/api/issues")
 def issues():
-    return jsonify(
-        {
-            "issues": list_issues(
-                include_human_reach=True
-            ),
-        }
-    )
+    return jsonify({"issues": list_issues(include_human_reach=True)})
 
 
 @app.get("/api/issues/<issue_id>")
-def issue_detail(
-    issue_id: str,
-):
+def issue_detail(issue_id: str):
     try:
-        result = get_issue_bundle(
-            issue_id
-        )
+        result = get_issue_bundle(issue_id)
     except KeyError:
-        return (
-            jsonify(
-                {"error": "not_found"}
-            ),
-            404,
-        )
-
+        return jsonify({"error": "not_found"}), 404
     return jsonify(result)
 
 
 @app.get("/api/issues/<issue_id>/trace")
-def issue_trace(
-    issue_id: str,
-):
+def issue_trace(issue_id: str):
     try:
-        bundle = get_issue_bundle(
-            issue_id
-        )
+        bundle = get_issue_bundle(issue_id)
     except KeyError:
-        return (
-            jsonify(
-                {"error": "not_found"}
-            ),
-            404,
-        )
-
-    return jsonify(
-        build_lifecycle_trace(bundle)
-    )
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(build_lifecycle_trace(bundle))
 
 
 @app.post("/api/issues/<issue_id>/complete")
-def complete_issue(
-    issue_id: str,
-):
+def complete_issue(issue_id: str):
     try:
-        result = record_trusted_completion(
-            issue_id
-        )
+        result = record_trusted_completion(issue_id)
     except RuntimeError as exc:
-        return (
-            jsonify(
-                {
-                    "error": "trusted_evidence_failed",
-                    "message": str(exc),
-                }
-            ),
-            502,
-        )
-
+        return jsonify({"error": "trusted_evidence_failed", "message": str(exc)}), 502
     return jsonify(result)
 
 
 @app.post("/api/issues/<issue_id>/verify")
-def verify_issue(
-    issue_id: str,
-):
+def verify_issue(issue_id: str):
     try:
-        result = run_independent_verifier(
-            issue_id
-        )
+        result = run_independent_verifier(issue_id)
     except RuntimeError as exc:
-        return (
-            jsonify(
-                {
-                    "error": "verification_failed",
-                    "message": str(exc),
-                }
-            ),
-            502,
-        )
-
+        return jsonify({"error": "verification_failed", "message": str(exc)}), 502
     return jsonify(result)
 
 
@@ -229,65 +152,26 @@ def recovery_plan_sanction(issue_id: str, plan_id: str):
 
 @app.get("/api/shifts")
 def shifts():
-    return jsonify(
-        {
-            "snapshots": (
-                list_shift_snapshots()
-            ),
-        }
-    )
+    return jsonify({"snapshots": list_shift_snapshots()})
 
 
 @app.post("/api/intake")
 def intake():
-    payload = request.get_json(
-        silent=True
-    )
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_request"}), 400
 
-    if not isinstance(
-        payload,
-        dict,
-    ):
-        return (
-            jsonify(
-                {"error": "invalid_request"}
-            ),
-            400,
-        )
-
-    message = payload.get(
-        "message"
-    )
-
-    if not isinstance(
-        message,
-        str,
-    ):
-        return (
-            jsonify(
-                {"error": "invalid_request"}
-            ),
-            400,
-        )
+    message = payload.get("message")
+    if not isinstance(message, str):
+        return jsonify({"error": "invalid_request"}), 400
 
     message = message.strip()
+    if not message or len(message) > 8000:
+        return jsonify({"error": "invalid_request"}), 400
 
-    if (
-        not message
-        or len(message) > 8000
-    ):
-        return (
-            jsonify(
-                {"error": "invalid_request"}
-            ),
-            400,
-        )
-
-    authenticated_user = (
-        request.headers.get(
-            "X-Goog-Authenticated-User-Email",
-            "operations-ui",
-        )
+    authenticated_user = request.headers.get(
+        "X-Goog-Authenticated-User-Email",
+        "operations-ui",
     )
 
     try:
@@ -318,22 +202,14 @@ def intake():
                     "error": "structured_output_required",
                     "message": result.get(
                         "message",
-                        (
-                            "The Agent Runtime did not return the required "
-                            "structured intake result. No durable work was "
-                            "created."
-                        ),
+                        "The Agent Runtime did not return the required structured intake result. No durable work was created.",
                     ),
                 }
             ),
             502,
         )
 
-    proposals = result.pop(
-        "proposals",
-        [],
-    )
-
+    proposals = result.pop("proposals", [])
     if not isinstance(proposals, list):
         return (
             jsonify(
@@ -341,10 +217,7 @@ def intake():
                     "blocked": False,
                     "status": "invalid_agent_output",
                     "error": "invalid_proposal_payload",
-                    "message": (
-                        "The structured intake result contained an invalid "
-                        "proposal payload. No durable work was created."
-                    ),
+                    "message": "The structured intake result contained an invalid proposal payload. No durable work was created.",
                 }
             ),
             502,
@@ -359,24 +232,53 @@ def intake():
     source_reference = intake_reference
 
     try:
-        coverage_review = review_coverage(message=message, proposals=proposals, source_reference=source_reference)
+        coverage_review = review_coverage(
+            message=message,
+            proposals=proposals,
+            source_reference=source_reference,
+        )
     except RuntimeError as exc:
-        return jsonify({"blocked":False,"status":"coverage_review_failed","error":"coverage_critic_failure",
-                        "message":"Independent coverage review failed; no operational work was created.",
-                        "detail":str(exc),"intake_reference":source_reference}),502
-    result["coverage_review"] = coverage_review
-    if coverage_review.get("decision") != "PASS":
-        result.update({"status":"human_review_required","issue_count":0,"issues":[],
-                       "message":"Coverage Critic disagreed with intake. No work was dispatched; the durable review requires operator attention."})
-        return jsonify(result),409
+        return (
+            jsonify(
+                {
+                    "blocked": False,
+                    "status": "coverage_review_failed",
+                    "error": "coverage_critic_failure",
+                    "message": "Independent coverage review failed; no operational work was created.",
+                    "detail": str(exc),
+                    "intake_reference": source_reference,
+                }
+            ),
+            502,
+        )
 
-    analysis_message = str(
-        result.get("message", "")
-    ).strip()
+    result["coverage_review"] = coverage_review
+    arbitration = arbitrate_coverage(proposals, coverage_review)
+    dispatchable = list(arbitration["dispatchable"])
+    held = list(arbitration["held"])
+
+    if not dispatchable:
+        result.update(
+            {
+                "status": "human_review_required",
+                "issue_count": 0,
+                "issues": [],
+                "held_issue_count": len(held),
+                "held_proposals": held,
+                "review_required": True,
+                "message": (
+                    "Coverage review found a blocking routing/duplication concern that could not be safely bounded. "
+                    "No operational work was dispatched."
+                ),
+            }
+        )
+        return jsonify(result), 409
+
+    analysis_message = str(result.get("message", "")).strip()
 
     try:
         created = persist_handover_proposals(
-            proposals=proposals,
+            proposals=dispatchable,
             source_reference=source_reference,
         )
     except RuntimeError as exc:
@@ -386,11 +288,7 @@ def intake():
                     "blocked": False,
                     "status": "persistence_failed",
                     "error": "state_authority_failure",
-                    "message": (
-                        "Handover analysis succeeded, but State Authority "
-                        "did not persist all proposed work. The failure is "
-                        "visible and requires operator attention."
-                    ),
+                    "message": "Handover analysis succeeded, but State Authority did not persist all dispatchable work. The failure is visible and requires operator attention.",
                     "detail": str(exc),
                     "intake_reference": source_reference,
                 }
@@ -402,21 +300,26 @@ def intake():
         f"{issue.get('id')} ({issue.get('owner')})"
         for issue in created
     )
+    review_required = bool(arbitration["review_required"])
+    held_message = (
+        f" Held {len(held)} disputed proposal(s) for operator review."
+        if held
+        else ""
+    )
 
     result.update(
         {
-            "status": "accepted",
+            "status": "accepted_with_review" if review_required else "accepted",
             "intake_reference": source_reference,
             "issue_count": len(created),
             "issues": created,
+            "held_issue_count": len(held),
+            "held_proposals": held,
+            "review_required": review_required,
             "message": (
-                f"Created {len(created)} durable operational issue(s) "
-                f"through State Authority: {created_summary}."
-                + (
-                    f"\n\n{analysis_message}"
-                    if analysis_message
-                    else ""
-                )
+                f"Created {len(created)} durable operational issue(s) through State Authority: {created_summary}."
+                + held_message
+                + (f"\n\n{analysis_message}" if analysis_message else "")
             ),
         }
     )
