@@ -169,6 +169,10 @@ Operators and judges can inspect the system at two layers:
 
 The product does not fabricate a single synthetic distributed trace. Exact observability limitations and reproducible proof commands are documented in `docs/verification.md`.
 
+## Final acceptance record
+
+The final Aug 27 live acceptance—including Gemini 3.5 speech, authoritative Google Chat state, Facilities photo proof, stale-action denial, Gateway/Model Armor 200/403 proof, recovery sanction, serving revisions, and `179 PASS / 1 authorized branch warning / 0 FAIL` readiness—is recorded in `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`.
+
 ## Safety boundary
 
 The fleet accepts only non-clinical operational work. Diagnosis, prescribing, clinical acuity decisions, treatment interpretation, and licensed clinical delegation are outside its authority. All demonstration text, audio, images, workspaces, and integrations are synthetic.
