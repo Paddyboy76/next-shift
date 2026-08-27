@@ -42,56 +42,9 @@
           <figure><img src="/api/issues/${encodeURIComponent(issueId)}/photo-evidence/${id}/after" alt="After repair photo"><figcaption>After</figcaption></figure>
         </div>
         <p>${esc(inspection.summary || "Visual inspection recorded.")}</p>
-        <small>Supporting visual evidence only · ${esc(record.model || "Gemini")}. Trusted source evidence and independent verification still control closure.</small>
+        <small>Captured through Google Chat Human Reach · supporting visual evidence only · ${esc(record.model || "Gemini")}. Trusted source evidence and independent verification still control closure.</small>
       </div>`;
     }).join("");
-  }
-
-  function uploadMarkup(issueId) {
-    return `<div class="visual-evidence-upload" data-photo-evidence-host="1">
-      <div class="visual-evidence-head"><strong>Before / after photo proof</strong><span>Facilities</span></div>
-      <p>Add a photo showing the problem before work and a photo after the repair. Gemini compares only what is visibly supported; it cannot close the issue.</p>
-      <div class="visual-evidence-inputs">
-        <label><span>Before</span><input type="file" accept="image/jpeg,image/png,image/webp" data-photo-kind="before"></label>
-        <label><span>After</span><input type="file" accept="image/jpeg,image/png,image/webp" data-photo-kind="after"></label>
-      </div>
-      <button type="button" class="frontline-primary" data-photo-submit="1" data-issue-id="${esc(issueId)}">Submit before & after photo proof</button>
-      <div class="frontline-error" data-photo-error="1"></div>
-    </div>`;
-  }
-
-  async function submitPhotos(button) {
-    const root = drawerContent();
-    const host = button.closest("[data-photo-evidence-host]");
-    const issueId = button.dataset.issueId;
-    if (!root || !host || !issueId) return;
-    const before = host.querySelector('[data-photo-kind="before"]')?.files?.[0];
-    const after = host.querySelector('[data-photo-kind="after"]')?.files?.[0];
-    const errorNode = host.querySelector("[data-photo-error]");
-    if (!before || !after) {
-      if (errorNode) errorNode.textContent = "Choose both a before photo and an after photo.";
-      return;
-    }
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = "Gemini is comparing the photos…";
-    if (errorNode) errorNode.textContent = "";
-    try {
-      const form = new FormData();
-      form.append("before", before, before.name || "before.jpg");
-      form.append("after", after, after.name || "after.jpg");
-      await requestJson(`/api/issues/${encodeURIComponent(issueId)}/photo-evidence`, {
-        method: "POST",
-        body: form,
-      });
-      if (typeof window.frontlineRefreshNow === "function") await window.frontlineRefreshNow();
-      delete root.dataset.photoEvidenceIssue;
-      if (typeof window.openFrontlineIssue === "function") await window.openFrontlineIssue(issueId);
-    } catch (error) {
-      button.disabled = false;
-      button.textContent = original;
-      if (errorNode) errorNode.textContent = error.message;
-    }
   }
 
   async function enhanceDrawer() {
@@ -101,37 +54,23 @@
     if (!issueId) return;
     if (root.dataset.photoEvidenceIssue === issueId) return;
 
-    // Synchronous guard prevents the MutationObserver from launching duplicate
-    // async enhancement passes while the issue payload is loading.
+    // Synchronous guard prevents duplicate async enhancement passes.
     root.dataset.photoEvidenceIssue = issueId;
 
     try {
       const payload = await requestJson(`/api/issues/${encodeURIComponent(issueId)}`);
-      const issue = payload?.issue || {};
       const records = Array.isArray(payload?.photo_evidence) ? payload.photo_evidence : [];
+      if (!records.length) return;
+
       const evidenceDetails = [...root.querySelectorAll("details")].find((node) =>
         node.querySelector("summary")?.textContent?.trim().toLowerCase().startsWith("evidence")
       );
-      if (evidenceDetails && records.length) {
-        const existing = evidenceDetails.querySelector("[data-photo-history]");
-        if (!existing) {
-          const history = document.createElement("div");
-          history.dataset.photoHistory = "1";
-          history.innerHTML = visualHistory(issueId, records);
-          evidenceDetails.appendChild(history);
-        }
-      }
+      if (!evidenceDetails || evidenceDetails.querySelector("[data-photo-history]")) return;
 
-      if (issue.owner !== "Facilities" || issue.state !== "ACTION_PENDING") return;
-      const existingComplete = root.querySelector('[data-frontline-action="complete"]');
-      if (existingComplete) existingComplete.hidden = true;
-      if (root.querySelector("[data-photo-evidence-host]")) return;
-      const host = document.createElement("div");
-      host.innerHTML = uploadMarkup(issueId);
-      const node = host.firstElementChild;
-      const hero = root.querySelector(".investigation-hero");
-      if (node && hero) hero.insertAdjacentElement("afterend", node);
-      node?.querySelector("[data-photo-submit]")?.addEventListener("click", (event) => submitPhotos(event.currentTarget));
+      const history = document.createElement("div");
+      history.dataset.photoHistory = "1";
+      history.innerHTML = visualHistory(issueId, records);
+      evidenceDetails.appendChild(history);
     } catch (_error) {
       // Core drawer remains usable if visual evidence is unavailable.
     }
