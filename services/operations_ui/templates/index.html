@@ -6,15 +6,26 @@
   <title>Next Shift — Operations Control</title>
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/frontline-theme.css">
-  <link rel="stylesheet" href="/static/frontline-polish.css">
+  <style>
+    .past-row>span{display:grid!important;grid-template-columns:116px 78px;gap:8px!important;align-items:center;width:202px;flex:0 0 202px}
+    .past-status{width:116px;box-sizing:border-box;justify-content:center;text-align:center}
+    .past-age{width:78px;text-align:left}
+    .visual-evidence-upload,.visual-evidence-record{margin-top:12px;padding:12px;border:1px solid var(--ns-border);border-radius:10px;background:var(--ns-surface-2)}
+    .visual-evidence-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.visual-evidence-head strong{color:var(--ns-text)}.visual-evidence-head span{font-size:9px;font-weight:900;text-transform:uppercase;color:var(--ns-accent)}
+    .visual-evidence-upload p,.visual-evidence-record p{margin:6px 0;color:var(--ns-muted);font-size:11px;line-height:1.45}.visual-evidence-record small{display:block;color:var(--ns-faint);line-height:1.4}
+    .visual-evidence-inputs{display:grid;grid-template-columns:1fr 1fr;gap:9px}.visual-evidence-inputs label{display:grid;gap:5px;padding:9px;border:1px solid var(--ns-border);border-radius:8px;background:var(--ns-surface)}.visual-evidence-inputs label>span{font-size:9px;font-weight:900;text-transform:uppercase;color:var(--ns-muted)}.visual-evidence-inputs input{max-width:100%;color:var(--ns-text-soft);font-size:10px}
+    .visual-evidence-images{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.visual-evidence-images figure{margin:0}.visual-evidence-images img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--ns-border)}.visual-evidence-images figcaption{margin-top:4px;color:var(--ns-muted);font-size:9px;text-align:center}
+    @media (max-width:720px){.past-row>span{grid-template-columns:116px minmax(0,1fr);width:100%;flex-basis:auto}.past-age{width:auto}.visual-evidence-inputs,.visual-evidence-images{grid-template-columns:1fr}}
+  </style>
   <script src="/static/theme.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="brand-row">
-      <span class="brand-mark">NS</span>
+      <div class="brand-wordmark" aria-label="Next Shift">
+        <span class="brand-next">NEXT</span><span class="brand-shift">SHIFT</span>
+      </div>
       <div>
-        <h1>Next Shift</h1>
         <p>Autonomous Operations Control</p>
       </div>
     </div>
@@ -28,15 +39,9 @@
       <div>
         <span class="eyebrow">Synthetic hospital operations · applicable to any 24/7 enterprise</span>
         <h2 id="demo-intro-title">The handover ends. The work does not.</h2>
-        <p>Messy notes become trackable work routed to the right team. Completion requires trusted evidence and independent verification.</p>
+        <p>Messy notes become trackable work routed to the right team. Completion requires trusted evidence and independent verification. A completion claim is not proof.</p>
+        <p class="subtle-note">Each issue visibly progresses through Interpret → Route → Execute → Prove → Verify.</p>
       </div>
-      <ol class="proof-chain" aria-label="Operational lifecycle">
-        <li><strong>1</strong><span>Interpret</span></li>
-        <li><strong>2</strong><span>Route</span></li>
-        <li><strong>3</strong><span>Execute</span></li>
-        <li><strong>4</strong><span>Prove</span></li>
-        <li><strong>5</strong><span>Verify</span></li>
-      </ol>
     </section>
 
     <section class="hero-grid">
@@ -54,86 +59,10 @@
           <span id="spoken-status">Optional · Gemini transcription · review required</span>
         </div>
         <div class="intake-actions">
-          <button id="submit-handover">Send to Next Shift</button>
+          <button id="submit-handover" class="primary-button">Send to Next Shift</button>
           <button id="load-demo-handover" class="secondary-button" type="button">Load six-team synthetic handover</button>
           <div id="intake-status"></div>
         </div>
-      </article>
-
-      <article class="panel metric-panel">
-        <span class="eyebrow">Operational state</span>
-        <div class="metrics">
-          <div class="metric-open"><strong id="metric-open">—</strong><span>Open work</span></div>
-          <div class="metric-verifying"><strong id="metric-verifying">—</strong><span>Verifying</span></div>
-          <div class="metric-review"><strong id="metric-review">—</strong><span>Human review</span></div>
-          <div class="metric-closed"><strong id="metric-closed">—</strong><span>Verified closed</span></div>
-        </div>
-      </article>
-    </section>
-
-    <section class="workspace">
-      <div class="board-area">
-        <div class="section-title">
-          <div>
-            <span class="eyebrow">Live issue board</span>
-            <h2>Operational work</h2>
-          </div>
-          <span id="last-refresh">Loading…</span>
-        </div>
-
-        <section id="attention-section" class="attention-section hidden" aria-labelledby="attention-heading">
-          <div class="subsection-heading">
-            <div>
-              <span class="eyebrow">Requires intervention</span>
-              <h3 id="attention-heading">Needs attention now</h3>
-            </div>
-            <span class="subtle-note">Only blocked, failed, human-review, or claimed work</span>
-          </div>
-          <div id="attention-work" class="attention-work"></div>
-        </section>
-
-        <section class="worklist-section" aria-labelledby="worklist-heading">
-          <div class="subsection-heading worklist-heading-row">
-            <div>
-              <span class="eyebrow">Current queue</span>
-              <h3 id="worklist-heading">Open work</h3>
-            </div>
-            <span class="subtle-note">Priority first · then newest</span>
-          </div>
-          <div id="owner-filters" class="owner-filters" aria-label="Filter work by owner"></div>
-          <div id="board" class="worklist"></div>
-        </section>
-
-        <section class="inactive-section" aria-labelledby="inactive-heading">
-          <details id="inactive-work">
-            <summary>
-              <span><span class="eyebrow">History</span><strong id="inactive-heading">Closed and failed work</strong></span>
-              <span id="inactive-count" class="subtle-note">0 items</span>
-            </summary>
-            <div id="inactive-board" class="inactive-board"></div>
-          </details>
-        </section>
-      </div>
-
-      <aside class="panel shift-panel">
-        <div class="panel-heading">
-          <div><span class="eyebrow">Continuity</span><h2>Shift snapshots</h2></div>
-        </div>
-        <div id="shift-list"></div>
-      </aside>
-    </section>
-
-    <section class="platform-grid">
-      <article class="panel platform-panel">
-        <span class="eyebrow">Historical intelligence · advisory only</span>
-        <h2>Operational Improvement Advisor</h2>
-        <p class="platform-disclaimer">Memory Bank provides historical context. Firestore alone establishes current work state.</p>
-        <div id="intelligence-panel" class="platform-content">Loading advisory intelligence…</div>
-      </article>
-      <article class="panel platform-panel">
-        <span class="eyebrow">Google Agent Platform</span>
-        <h2>Runtime lifecycle & observability</h2>
-        <div id="platform-panel" class="platform-content">Loading platform evidence…</div>
       </article>
     </section>
   </main>
@@ -146,7 +75,10 @@
 
   <script src="/static/app.js"></script>
   <script src="/static/deeplink.js"></script>
+  <script src="/static/photo-evidence.js"></script>
   <script src="/static/plain-language.js"></script>
   <script src="/static/frontline-polish.js"></script>
+  <script src="/static/final-ui-cleanup.js"></script>
+  <script src="/static/issue-lifecycle.js"></script>
 </body>
 </html>

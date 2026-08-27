@@ -16,6 +16,7 @@ from google.cloud import firestore
 PROJECT_ID = "next-shift-506004"
 ISSUES = "handover_issues"
 MEMORY_SNAPSHOTS = "operational_memory_snapshots"
+MEMORY_TIMEOUT_SECONDS = 3
 
 
 def _db() -> firestore.Client:
@@ -99,18 +100,7 @@ def analyze_issues(issues: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def current_intelligence() -> dict[str, Any]:
-    memory_url = os.environ.get("MEMORY_SERVICE_URL", "").strip().rstrip("/")
-    if memory_url:
-        token = id_token.fetch_id_token(Request(), memory_url)
-        response = requests.get(
-            f"{memory_url}/v1/intelligence",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.json()
-
+def _local_intelligence() -> dict[str, Any]:
     db = _db()
     snapshot = db.collection(MEMORY_SNAPSHOTS).document("current").get()
     if snapshot.exists:
@@ -127,3 +117,23 @@ def current_intelligence() -> dict[str, Any]:
     result["current_state_authority"] = "Firestore handover_issues"
     result["may_mutate_workflow"] = False
     return result
+
+
+def current_intelligence() -> dict[str, Any]:
+    memory_url = os.environ.get("MEMORY_SERVICE_URL", "").strip().rstrip("/")
+    if memory_url:
+        try:
+            token = id_token.fetch_id_token(Request(), memory_url)
+            response = requests.get(
+                f"{memory_url}/v1/intelligence",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=MEMORY_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            result = response.json()
+            if isinstance(result, dict):
+                return result
+        except (requests.RequestException, ValueError):
+            pass
+
+    return _local_intelligence()

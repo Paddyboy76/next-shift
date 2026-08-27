@@ -7,7 +7,9 @@ REGION="asia-southeast1"
 SERVICE="next-shift-operations"
 SERVICE_ACCOUNT="ns-operations-ui@${PROJECT_ID}.iam.gserviceaccount.com"
 BUILDER_ACCOUNT="ns-cloud-run-builder@${PROJECT_ID}.iam.gserviceaccount.com"
-MODEL="gemini-2.5-flash"
+MODEL="gemini-3.5-flash"
+PHOTO_MODEL="gemini-3.5-flash"
+PHOTO_BUCKET="${PROJECT_ID}-photo-evidence"
 SOURCE="/home/patrick/next-shift/services/operations_ui"
 
 ACTIVE_PROJECT="$(gcloud config get-value project 2>/dev/null)"
@@ -16,6 +18,36 @@ if [[ "${ACTIVE_PROJECT}" != "${PROJECT_ID}" ]]; then
     exit 1
 fi
 
+HUMAN_REACH_URL="$(gcloud run services describe next-shift-human-reach \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
+    --format='value(status.url)')"
+
+if [[ -z "${HUMAN_REACH_URL}" ]]; then
+    printf 'ERROR: Human Reach service URL not found\n'
+    exit 1
+fi
+
+gcloud run services add-iam-policy-binding next-shift-human-reach \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/run.invoker" \
+    --quiet >/dev/null
+
+if ! gcloud storage buckets describe "gs://${PHOTO_BUCKET}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
+    gcloud storage buckets create "gs://${PHOTO_BUCKET}" \
+        --project="${PROJECT_ID}" \
+        --location="${REGION}" \
+        --uniform-bucket-level-access \
+        --quiet
+fi
+
+gcloud storage buckets add-iam-policy-binding "gs://${PHOTO_BUCKET}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/storage.objectAdmin" \
+    --quiet >/dev/null
+
 gcloud run deploy "${SERVICE}" \
     --project="${PROJECT_ID}" \
     --region="${REGION}" \
@@ -23,7 +55,7 @@ gcloud run deploy "${SERVICE}" \
     --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${BUILDER_ACCOUNT}" \
     --service-account="${SERVICE_ACCOUNT}" \
     --no-allow-unauthenticated \
-    --update-env-vars="SPOKEN_HANDOVER_MODEL=${MODEL}" \
+    --update-env-vars="SPOKEN_HANDOVER_MODEL=${MODEL},PHOTO_EVIDENCE_MODEL=${PHOTO_MODEL},PHOTO_EVIDENCE_BUCKET=${PHOTO_BUCKET},HUMAN_REACH_URL=${HUMAN_REACH_URL}" \
     --quiet
 
 LIVE_MODEL="$(gcloud run services describe "${SERVICE}" \
@@ -37,3 +69,4 @@ if [[ "${LIVE_MODEL}" != "${MODEL}" ]]; then
 fi
 
 printf 'SPOKEN_HANDOVER_DEPLOY_OK=1\n'
+printf 'PHOTO_EVIDENCE_BUCKET=%s\n' "${PHOTO_BUCKET}"

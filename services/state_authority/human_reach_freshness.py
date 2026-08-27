@@ -27,9 +27,6 @@ def authorize_and_get_fresh_delivery(
         delivery_id=delivery_id,
     )
 
-    if delivery.get("delivery_status") != "PENDING":
-        return delivery
-
     issue_id = delivery.get("issue_id")
 
     if not isinstance(issue_id, str) or not issue_id:
@@ -46,9 +43,12 @@ def authorize_and_get_fresh_delivery(
         return delivery
 
     issue = issue_snapshot.to_dict() or {}
-    current_state = issue.get("state")
+    current_state = str(issue.get("state") or "UNKNOWN")
+    delivery["authoritative_issue_state"] = current_state
+    delivery["authoritative_verification_status"] = issue.get("verification_status")
+    delivery["authoritative_issue_updated_at"] = issue.get("updated_at")
 
-    if current_state == "ACTION_PENDING":
+    if delivery.get("delivery_status") != "PENDING" or current_state == "ACTION_PENDING":
         return delivery
 
     ref = (
