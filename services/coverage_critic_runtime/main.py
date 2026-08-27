@@ -28,6 +28,7 @@ FINDING_TYPES = {
     "MISROUTED",
     "UNCERTAIN",
 }
+BLOCKING_FINDING_TYPES = {"DUPLICATED", "CONFLATED", "MISROUTED"}
 BLOCKING_OR_MISSING_TYPES = FINDING_TYPES - {"UNCERTAIN"}
 app = Flask(__name__)
 
@@ -44,6 +45,35 @@ def _clean_text(value: Any, *, maximum: int, fallback: str) -> str:
     if not isinstance(value, str) or not value.strip():
         return fallback
     return value.strip()[:maximum]
+
+
+def _generate_json(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+    url = (
+        f"https://aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/global/"
+        f"publishers/google/models/{MODEL}:generateContent"
+    )
+    response = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {_access()}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json",
+                "responseSchema": schema,
+            },
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    body = response.json()
+    value = json.loads(body["candidates"][0]["content"]["parts"][0]["text"])
+    if not isinstance(value, dict):
+        raise ValueError("gemini_result_not_object")
+    return value
 
 
 def normalize_review(value: Any, *, proposal_count: int) -> dict[str, Any]:
@@ -122,6 +152,127 @@ def normalize_review(value: Any, *, proposal_count: int) -> dict[str, Any]:
     }
 
 
+def _unscoped_blocking_indexes(review: dict[str, Any]) -> list[int]:
+    findings = review.get("findings")
+    if not isinstance(findings, list):
+        return []
+    return [
+        index
+        for index, finding in enumerate(findings)
+        if isinstance(finding, dict)
+        and finding.get("type") in BLOCKING_FINDING_TYPES
+        and not finding.get("proposal_indexes")
+    ]
+
+
+def _apply_scopes(
+    review: dict[str, Any],
+    *,
+    scopes: Any,
+    proposal_count: int,
+) -> dict[str, Any]:
+    findings = [dict(item) for item in review.get("findings", []) if isinstance(item, dict)]
+    scoped_positions: set[int] = set()
+
+    if isinstance(scopes, list):
+        for item in scopes:
+            if not isinstance(item, dict):
+                continue
+            finding_index = item.get("finding_index")
+            raw_indexes = item.get("proposal_indexes")
+            if not isinstance(finding_index, int) or not (0 <= finding_index < len(findings)):
+                continue
+            if findings[finding_index].get("type") not in BLOCKING_FINDING_TYPES:
+                continue
+            indexes = []
+            if isinstance(raw_indexes, list):
+                for value in raw_indexes:
+                    if (
+                        isinstance(value, int)
+                        and not isinstance(value, bool)
+                        and 0 <= value < proposal_count
+                        and value not in indexes
+                    ):
+                        indexes.append(value)
+            if indexes:
+                findings[finding_index]["proposal_indexes"] = indexes
+                scoped_positions.add(finding_index)
+
+    # A blocking accusation that still cannot identify any affected proposal
+    # after a dedicated scoping pass is not actionable enough to veto the whole
+    # handover. Preserve it as operator-visible uncertainty instead.
+    for index in _unscoped_blocking_indexes({"findings": findings}):
+        findings[index]["type"] = "UNCERTAIN"
+        findings[index]["detail"] = (
+            findings[index].get("detail", "Coverage concern")
+            + " The critic could not bind this concern to a specific proposed work item."
+        )[:800]
+        findings[index]["proposal_indexes"] = []
+
+    decision = "REVIEW_REQUIRED" if any(
+        item.get("type") in BLOCKING_OR_MISSING_TYPES for item in findings
+    ) else "PASS"
+    return {**review, "decision": decision, "findings": findings}
+
+
+def scope_unbounded_findings(
+    *,
+    message: str,
+    proposals: list[dict[str, Any]],
+    review: dict[str, Any],
+) -> dict[str, Any]:
+    unscoped = _unscoped_blocking_indexes(review)
+    if not unscoped:
+        return review
+
+    if len(proposals) == 1:
+        return _apply_scopes(
+            review,
+            scopes=[{"finding_index": index, "proposal_indexes": [0]} for index in unscoped],
+            proposal_count=1,
+        )
+
+    prompt = (
+        "You are repairing the scope of an independent coverage review for a messy, "
+        "human-written operational handover. The review already exists. Do NOT invent "
+        "new findings and do NOT rewrite proposals. For each listed blocking finding, "
+        "identify the ZERO-BASED proposal index or indexes actually affected. If the "
+        "finding cannot be tied to a concrete proposal after examining the raw handover "
+        "and proposals, return an empty proposal_indexes array for that finding.\n\n"
+        f"RAW HANDOVER:\n{message}\n\n"
+        f"PROPOSALS WITH INDEXES:\n{json.dumps([{'index': i, **p} for i, p in enumerate(proposals)], sort_keys=True)}\n\n"
+        f"UNSCOPED FINDINGS:\n{json.dumps([{'finding_index': i, **review['findings'][i]} for i in unscoped], sort_keys=True)}"
+    )
+    result = _generate_json(
+        prompt,
+        {
+            "type": "OBJECT",
+            "properties": {
+                "scopes": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "finding_index": {"type": "INTEGER"},
+                            "proposal_indexes": {
+                                "type": "ARRAY",
+                                "items": {"type": "INTEGER"},
+                            },
+                        },
+                        "required": ["finding_index", "proposal_indexes"],
+                    },
+                }
+            },
+            "required": ["scopes"],
+        },
+    )
+    return _apply_scopes(
+        review,
+        scopes=result.get("scopes"),
+        proposal_count=len(proposals),
+    )
+
+
 def model_review(
     message: str,
     proposals: list[dict[str, Any]],
@@ -133,18 +284,19 @@ def model_review(
         "Owners are Facilities, AssetLogistics, LanguageAccess, DischargeDME, "
         "EVSThroughput, PatientTransport.\n\n"
         "IMPORTANT DECISION RULES:\n"
-        "- Human shorthand, imperfect grammar, vague object names, or uncertainty about the "
-        "exact failed component are normal handover conditions and are NOT by themselves a "
-        "reason to stop safe operational work.\n"
+        "- Human shorthand, imperfect grammar, transcription noise, vague object names, or "
+        "uncertainty about the exact failed component are normal handover conditions and "
+        "are NOT by themselves a reason to stop safe operational work.\n"
         "- If the owner, location, and safe next operational action are clear enough for the "
         "specialist to investigate, use an UNCERTAIN finding if useful but the overall "
         "decision may still be PASS.\n"
         "- Use REVIEW_REQUIRED only when dispatching a proposal as written could materially "
         "send work to the wrong owner, merge distinct jobs, duplicate work, miss an unresolved "
         "job, or otherwise create unsafe/incorrect operational action.\n"
+        "- Every DUPLICATED, CONFLATED, or MISROUTED finding MUST contain at least one "
+        "proposal index. Never emit an unscoped blocking finding.\n"
         "- A clearly actionable proposal must not be rejected merely because another part "
-        "of the same handover is ambiguous. Scope findings to proposal indexes whenever "
-        "possible.\n"
+        "of the same handover is ambiguous. Scope findings to proposal indexes.\n"
         "- proposal_indexes are ZERO-BASED indexes into the PROPOSALS array.\n"
         "- Use an empty string for suggested_owner when no owner correction is needed.\n\n"
         "Return only the requested JSON object.\nRAW:\n"
@@ -152,70 +304,56 @@ def model_review(
         + "\nPROPOSALS:\n"
         + json.dumps(proposals, sort_keys=True)
     )
-    url = (
-        f"https://aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/global/"
-        f"publishers/google/models/{MODEL}:generateContent"
-    )
-    response = requests.post(
-        url,
-        headers={
-            "Authorization": f"Bearer {_access()}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0,
-                "responseMimeType": "application/json",
-                "responseSchema": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "decision": {
-                            "type": "STRING",
-                            "enum": ["PASS", "REVIEW_REQUIRED"],
-                        },
-                        "summary": {"type": "STRING"},
-                        "findings": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "type": {
-                                        "type": "STRING",
-                                        "enum": [
-                                            "MISSED",
-                                            "DUPLICATED",
-                                            "CONFLATED",
-                                            "MISROUTED",
-                                            "UNCERTAIN",
-                                        ],
-                                    },
-                                    "detail": {"type": "STRING"},
-                                    "proposal_indexes": {
-                                        "type": "ARRAY",
-                                        "items": {"type": "INTEGER"},
-                                    },
-                                    "suggested_owner": {"type": "STRING"},
-                                },
-                                "required": [
-                                    "type",
-                                    "detail",
-                                    "proposal_indexes",
-                                    "suggested_owner",
+    raw = _generate_json(
+        prompt,
+        {
+            "type": "OBJECT",
+            "properties": {
+                "decision": {
+                    "type": "STRING",
+                    "enum": ["PASS", "REVIEW_REQUIRED"],
+                },
+                "summary": {"type": "STRING"},
+                "findings": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "type": {
+                                "type": "STRING",
+                                "enum": [
+                                    "MISSED",
+                                    "DUPLICATED",
+                                    "CONFLATED",
+                                    "MISROUTED",
+                                    "UNCERTAIN",
                                 ],
                             },
+                            "detail": {"type": "STRING"},
+                            "proposal_indexes": {
+                                "type": "ARRAY",
+                                "items": {"type": "INTEGER"},
+                            },
+                            "suggested_owner": {"type": "STRING"},
                         },
+                        "required": [
+                            "type",
+                            "detail",
+                            "proposal_indexes",
+                            "suggested_owner",
+                        ],
                     },
-                    "required": ["decision", "summary", "findings"],
                 },
             },
+            "required": ["decision", "summary", "findings"],
         },
-        timeout=120,
     )
-    response.raise_for_status()
-    body = response.json()
-    raw = json.loads(body["candidates"][0]["content"]["parts"][0]["text"])
-    return normalize_review(raw, proposal_count=len(proposals))
+    review = normalize_review(raw, proposal_count=len(proposals))
+    return scope_unbounded_findings(
+        message=message,
+        proposals=proposals,
+        review=review,
+    )
 
 
 @app.get("/health")
