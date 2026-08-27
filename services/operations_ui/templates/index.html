@@ -10,7 +10,12 @@
     .past-row>span{display:grid!important;grid-template-columns:116px 78px;gap:8px!important;align-items:center;width:202px;flex:0 0 202px}
     .past-status{width:116px;box-sizing:border-box;justify-content:center;text-align:center}
     .past-age{width:78px;text-align:left}
-    @media (max-width:720px){.past-row>span{grid-template-columns:116px minmax(0,1fr);width:100%;flex-basis:auto}.past-age{width:auto}}
+    .visual-evidence-upload,.visual-evidence-record{margin-top:12px;padding:12px;border:1px solid var(--ns-border);border-radius:10px;background:var(--ns-surface-2)}
+    .visual-evidence-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.visual-evidence-head strong{color:var(--ns-text)}.visual-evidence-head span{font-size:9px;font-weight:900;text-transform:uppercase;color:var(--ns-accent)}
+    .visual-evidence-upload p,.visual-evidence-record p{margin:6px 0;color:var(--ns-muted);font-size:11px;line-height:1.45}.visual-evidence-record small{display:block;color:var(--ns-faint);line-height:1.4}
+    .visual-evidence-inputs{display:grid;grid-template-columns:1fr 1fr;gap:9px}.visual-evidence-inputs label{display:grid;gap:5px;padding:9px;border:1px solid var(--ns-border);border-radius:8px;background:var(--ns-surface)}.visual-evidence-inputs label>span{font-size:9px;font-weight:900;text-transform:uppercase;color:var(--ns-muted)}.visual-evidence-inputs input{max-width:100%;color:var(--ns-text-soft);font-size:10px}
+    .visual-evidence-images{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:9px 0}.visual-evidence-images figure{margin:0}.visual-evidence-images img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--ns-border)}.visual-evidence-images figcaption{margin-top:4px;color:var(--ns-muted);font-size:9px;text-align:center}
+    @media (max-width:720px){.past-row>span{grid-template-columns:116px minmax(0,1fr);width:100%;flex-basis:auto}.past-age{width:auto}.visual-evidence-inputs,.visual-evidence-images{grid-template-columns:1fr}}
   </style>
   <script src="/static/theme.js" defer></script>
 </head>
