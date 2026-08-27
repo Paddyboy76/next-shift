@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import io
 import json
 import os
 import uuid
@@ -16,7 +15,7 @@ import requests
 
 PROJECT_ID = "next-shift-506004"
 MODEL = os.environ.get("PHOTO_EVIDENCE_MODEL", "gemini-3.5-flash")
-MAX_IMAGE_BYTES = 3 * 1024 * 1024
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
@@ -44,7 +43,7 @@ def _clean_image(data: bytes, mime_type: str, label: str) -> tuple[bytes, str]:
     if normalized not in ALLOWED_TYPES:
         raise ValueError(f"{label} image must be JPEG, PNG, or WebP")
     if not data or len(data) > MAX_IMAGE_BYTES:
-        raise ValueError(f"{label} image must be between 1 byte and 3 MiB")
+        raise ValueError(f"{label} image must be between 1 byte and 8 MiB")
     return data, normalized
 
 
@@ -185,7 +184,6 @@ def inspect_and_store(*, issue: dict[str, Any], before: bytes, before_type: str,
 
 def list_photo_evidence(issue_id: str) -> list[dict[str, Any]]:
     client = storage.Client(project=PROJECT_ID)
-    bucket = client.bucket(_bucket_name())
     records: list[dict[str, Any]] = []
     for blob in client.list_blobs(_bucket_name(), prefix=f"{issue_id}/"):
         if not blob.name.endswith("/inspection.json"):
