@@ -6,6 +6,12 @@
   <title>Next Shift — Operations Control</title>
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/frontline-theme.css">
+  <style>
+    .past-row>span{display:grid!important;grid-template-columns:116px 78px;gap:8px!important;align-items:center;width:202px;flex:0 0 202px}
+    .past-status{width:116px;box-sizing:border-box;justify-content:center;text-align:center}
+    .past-age{width:78px;text-align:left}
+    @media (max-width:720px){.past-row>span{grid-template-columns:116px minmax(0,1fr);width:100%;flex-basis:auto}.past-age{width:auto}}
+  </style>
   <script src="/static/theme.js" defer></script>
 </head>
 <body>
