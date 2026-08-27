@@ -35,9 +35,10 @@ These are scoped deployment units, not a blind one-command installer:
 | `deploy_verification_path.sh` | trusted evidence, verifier, Operations bindings |
 | `deploy_critic_inspector.sh` | Coverage Critic, Evidence Inspector, verifier/Operations bindings |
 | `deploy_recovery_planner.sh` | Recovery Planner and State Authority/Operations bindings |
+| `deploy_memory_advisor.sh` | Operational Improvement Advisor on Gemini 3.5 with existing managed Memory Bank |
 | `deploy_spoken_handover.sh` | current Operations deployment with Gemini 3.5 spoken handover, photo-evidence audit access, and Human Reach refresh binding |
 | `deploy_chat_photo_proof.sh` | current Human Reach Facilities photo-proof path plus the current Operations deployment |
-| `scripts/demo_proof_snapshot.sh` | read-only compact serving/security proof for demo and inspection; no mutation |
+| `scripts/demo_proof_snapshot.sh` | read-only compact serving/security/model proof for demo and inspection; no mutation |
 
 Several older scripts redeploy shared services and may predate later environment bindings. Compare `--set-env-vars` and `--update-env-vars` behavior with the serving revision before use. For the final product, prefer the narrow current script associated with the changed path.
 
@@ -71,6 +72,25 @@ CHAT_PHOTO_PROOF_DEPLOY_OK=1
 PHOTO_EVIDENCE_MODEL=gemini-3.5-flash
 ```
 
+## Gemini 3.5 Operational Improvement Advisor
+
+`deploy_memory_advisor.sh` updates the private `next-shift-memory-sync` Cloud Run service while preserving its advisory-only authority boundary and existing regional Agent Runtime / Memory Bank.
+
+The service uses `ADVISOR_MODEL=gemini-3.5-flash`. Model generation is configured through the global Vertex AI model location while Memory Bank remains attached to the managed Agent Runtime in `asia-southeast1`.
+
+```bash
+bash deploy_memory_advisor.sh
+```
+
+Success ends with:
+
+```text
+MEMORY_ADVISOR_DEPLOY_OK=1
+ADVISOR_MODEL=gemini-3.5-flash
+```
+
+The existing scheduled refresh continues to invoke the same private service. A model upgrade does not grant the advisor workflow mutation authority: its output remains `ADVISORY_ONLY`, Firestore remains current-state authority, and `may_mutate_workflow=false`.
+
 ## Existing-project rebuild order
 
 The repository is reproducible for its existing synthetic project but does not claim zero-touch bootstrap of a brand-new Google Cloud organization/project.
@@ -82,8 +102,9 @@ For an authorized rebuild, use dependency order and validate after every unit:
 3. `bash deploy_secure_specialists.sh`
 4. deploy the trusted evidence / verifier / critic / inspector path
 5. deploy Recovery Planner
-6. deploy current Human Reach + Operations with `bash deploy_chat_photo_proof.sh`
-7. run full readiness and live acceptance
+6. deploy the Gemini 3.5 Memory advisor with `bash deploy_memory_advisor.sh`
+7. deploy current Human Reach + Operations with `bash deploy_chat_photo_proof.sh`
+8. run full readiness and live acceptance
 
 Do not blindly run every historical deployment script in sequence after the final product is already serving. Shared-service environment values and IAM bindings must match the current architecture.
 
@@ -98,7 +119,8 @@ Final readiness expects, among other controls:
 - Verifier invokes the independent Evidence Inspector;
 - specialist Cloud Run services are callable only by their owner-specific Pub/Sub push identities;
 - Operations uses `SPOKEN_HANDOVER_MODEL=gemini-3.5-flash`;
-- Facilities photo proof uses `PHOTO_EVIDENCE_MODEL=gemini-3.5-flash` and the private synthetic photo bucket.
+- Facilities photo proof uses `PHOTO_EVIDENCE_MODEL=gemini-3.5-flash` and the private synthetic photo bucket;
+- Operational Improvement Advisor uses `ADVISOR_MODEL=gemini-3.5-flash`, while Memory Bank remains advisory only.
 
 ## Post-deployment proof
 
