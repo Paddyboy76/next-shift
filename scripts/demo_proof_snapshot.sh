@@ -72,6 +72,7 @@ printf 'MODEL_ASSERT all_demo_gemini_3_5=true\n'
 GATEWAY_PROOF="$(gcloud logging read \
     'resource.type="cloud_run_job" AND resource.labels.job_name="next-shift-gateway-trace-proof" AND jsonPayload.event_type="gateway.model_armor_trace_proof" AND jsonPayload.benign_decision="ALLOW" AND jsonPayload.bypass_decision="DENY" AND jsonPayload.fail_open=false' \
     --project="${PROJECT_ID}" \
+    --freshness=7d \
     --limit=1 \
     --order=desc \
     --format='value(jsonPayload.trace_id,jsonPayload.benign_http_status,jsonPayload.bypass_http_status)' 2>/dev/null || true)"
@@ -88,6 +89,7 @@ fi
 STALE_PROOF="$(gcloud logging read \
     'resource.type="cloud_run_revision" AND resource.labels.service_name="next-shift-state-authority" AND jsonPayload.reason="human_reach_stale_response" AND jsonPayload.decision="DENY"' \
     --project="${PROJECT_ID}" \
+    --freshness=7d \
     --limit=1 \
     --order=desc \
     --format='value(jsonPayload.issue_id,jsonPayload.details.expected,jsonPayload.details.current)' 2>/dev/null || true)"
@@ -104,6 +106,7 @@ fi
 RECOVERY_PROOF="$(gcloud logging read \
     'resource.type="cloud_run_revision" AND resource.labels.service_name="next-shift-state-authority" AND jsonPayload.event_type="authorization.decision" AND jsonPayload.capability="recovery.sanction" AND jsonPayload.decision="ALLOW" AND jsonPayload.reason="recovery_action_sanctioned"' \
     --project="${PROJECT_ID}" \
+    --freshness=7d \
     --limit=1 \
     --order=desc \
     --format='value(jsonPayload.issue_id,jsonPayload.details.plan_id)' 2>/dev/null || true)"
