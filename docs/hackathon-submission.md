@@ -88,11 +88,19 @@ The final deployed acceptance demonstrated:
 - cross-shift continuity using current Firestore truth;
 - a controlled recovery plan and separate `recovery_action_sanctioned` proof;
 - Agent Gateway / Model Armor behavioral proof with benign HTTP `200 / ALLOW`, instruction-bypass HTTP `403 / DENY`, and `fail_open=false`;
-- final branch readiness: `179 PASS / 1 authorized branch warning / 0 FAIL / NEXT_SHIFT_READINESS=PASS`.
+- all judge-facing Gemini paths on `gemini-3.5-flash`;
+- final clean-main submission gate: `180 PASS / 0 WARN / 0 FAIL / NEXT_SHIFT_READINESS=PASS / NEXT_SHIFT_SUBMISSION=PASS`.
 
-Final submission success is defined as clean current `main`, zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS`.
+Final repository state:
 
-The durable acceptance record is `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`. The final continuous live demo runbook is `docs/demo-script.md`.
+```text
+main=882975f89595f6306f9c6246bd5a6983fa0d5bb1
+152 tests passed
+49 subtests passed
+MODEL_ASSERT all_demo_gemini_3_5=true
+```
+
+The durable final freeze record is `docs/autonomy/evidence/101-final-submission-freeze-20260828.md`. The historical Aug 27 product-acceptance record is `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`. The continuous live demo runbook is `docs/demo-script.md`.
 
 ## Google technology
 

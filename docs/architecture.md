@@ -19,7 +19,7 @@ The product separates **reasoning** from **authority**. Gemini may interpret, tr
 | Inspect evidence quality | Independent Evidence Inspector | Evaluates exact evidence and persists PASS/FAIL |
 | Certify closure | Independent Verifier | Sole caller allowed to request `VERIFYING → CLOSED` |
 | Recover delayed/rejected work | Controlled Recovery Planner | Advisory plan only; requires separate Operations sanction |
-| Learn historical patterns | Gemini advisor + Memory Bank | Advisory history only; cannot establish current state |
+| Learn historical patterns | Gemini 3.5 advisor + Memory Bank | Advisory history only; cannot establish current state |
 
 ## Canonical operational channels
 
@@ -169,9 +169,24 @@ Operators and judges can inspect the system at two layers:
 
 The product does not fabricate a single synthetic distributed trace. Exact observability limitations and reproducible proof commands are documented in `docs/verification.md`.
 
-## Final acceptance record
+## Final acceptance records
 
-The final Aug 27 live acceptance—including Gemini 3.5 speech, authoritative Google Chat state, Facilities photo proof, stale-action denial, Gateway/Model Armor 200/403 proof, recovery sanction, serving revisions, and `179 PASS / 1 authorized branch warning / 0 FAIL` readiness—is recorded in `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`.
+Mission 100 records the Aug 27 live product acceptance, including Gemini 3.5 speech, authoritative Google Chat state, Facilities photo proof, stale-action denial, Gateway/Model Armor 200/403 proof, recovery sanction, and the final branch readiness run.
+
+Mission 101 records the clean-main submission freeze on Aug 28:
+
+```text
+main=882975f89595f6306f9c6246bd5a6983fa0d5bb1
+152 passed, 49 subtests passed
+PASS=180
+WARN=0
+FAIL=0
+NEXT_SHIFT_READINESS=PASS
+MODEL_ASSERT all_demo_gemini_3_5=true
+NEXT_SHIFT_SUBMISSION=PASS
+```
+
+See `docs/autonomy/evidence/100-final-product-acceptance-20260827.md` and `docs/autonomy/evidence/101-final-submission-freeze-20260828.md`.
 
 ## Safety boundary
 

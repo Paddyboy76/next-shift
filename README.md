@@ -58,7 +58,7 @@ flowchart TD
     IV --> SA
     UI --> RP[Controlled Recovery Planner]
     RP --> SA
-    UI --> MB[Gemini advisor + Memory Bank]
+    UI --> MB[Gemini 3.5 advisor + Memory Bank]
     SA --> TR[Governed lifecycle trace]
 ```
 
@@ -66,7 +66,7 @@ Only State Authority owns workflow mutation. Gemini may interpret, critique, tra
 
 ## Google platform leverage
 
-- **Gemini 3.5:** spoken-handover transcription, messy-intake normalization, independent coverage critique, supporting before/after visual comparison, and evidence-linked operational improvement advice.
+- **Gemini 3.5:** managed intake, spoken-handover transcription, independent coverage critique, supporting before/after visual comparison, and evidence-linked operational improvement advice.
 - **Google ADK + Vertex AI Agent Runtime:** managed agent execution with managed Agent Identity.
 - **Agent Registry:** a real registered `Next Shift` agent and `next-shift-runtime` service linked to the managed runtime for governed lifecycle and enterprise discovery.
 - **Memory Bank:** persistent advisory historical context across shifts without replacing Firestore current-state truth.
@@ -77,9 +77,11 @@ Only State Authority owns workflow mutation. Gemini may interpret, critique, tra
 - **Google Chat:** asynchronous Human Reach and frontline photo-proof capture in the same work thread.
 - **Cloud Logging / Cloud Run telemetry:** inspectable security decisions, proof records, request telemetry, service revisions, and durable correlation with the governed lifecycle trace.
 
-## Live acceptance achieved
+## Final submission acceptance
 
-The final branch acceptance proved all of the following against the deployed project:
+The deployed product has been accepted on clean current `main`.
+
+Live acceptance proved:
 
 - messy multi-item human text routed into durable work;
 - repeated same-owner Facilities jobs remained separate;
@@ -91,20 +93,33 @@ The final branch acceptance proved all of the following against the deployed pro
 - the Independent Verifier closed the issue and the Chat card refreshed to green **Verified complete**;
 - Gateway / Model Armor proof recorded benign `200 / ALLOW`, bypass `403 / DENY`, and `fail_open=false`;
 - controlled recovery produced a separate auditable `recovery_action_sanctioned` record;
-- final branch readiness: **179 PASS / 1 authorized branch warning / 0 FAIL / `NEXT_SHIFT_READINESS=PASS`**.
+- all judge-facing model paths reported `gemini-3.5-flash`.
 
-The final submission condition is stricter: clean current `main`, zero warnings, zero failures, and `NEXT_SHIFT_READINESS=PASS`.
+Final clean-main submission gate:
 
-See the durable acceptance record at [Mission 100 — Final Product Acceptance](docs/autonomy/evidence/100-final-product-acceptance-20260827.md).
+```text
+main=882975f89595f6306f9c6246bd5a6983fa0d5bb1
+152 passed, 49 subtests passed
+PASS=180
+WARN=0
+FAIL=0
+NEXT_SHIFT_READINESS=PASS
+MODEL_ASSERT all_demo_gemini_3_5=true
+NEXT_SHIFT_SUBMISSION=PASS
+```
+
+See [Mission 101 — Final Submission Freeze](docs/autonomy/evidence/101-final-submission-freeze-20260828.md) for the durable final record. Mission 100 remains the historical Aug 27 product-acceptance record.
 
 ## Verify before believing the claims
 
+Final composed submission verification:
+
 ```bash
 gcloud config set project next-shift-506004
-bash verify_readiness.sh
+bash scripts/verify_submission.sh
 ```
 
-For a compact read-only live proof during the demo:
+For the compact read-only live proof used in the demo:
 
 ```bash
 bash scripts/demo_proof_snapshot.sh
