@@ -1,14 +1,14 @@
 # Next Shift — Canonical Project Truth
 
-**Status:** Final product hardening complete; submission freeze pending clean-main verification  
+**Status:** Submission-frozen; engineering complete pending video and final submission  
 **Canonical repository:** `Paddyboy76/next-shift`  
 **Google Cloud project:** `next-shift-506004`  
 **Project number:** `963749706976`  
 **Primary region:** `asia-southeast1`  
-**Final accepted branch:** `final/visual-hierarchy-polish`  
-**Latest accepted live proof date:** 2026-08-27
+**Final verified main:** `882975f89595f6306f9c6246bd5a6983fa0d5bb1`  
+**Final submission proof date:** 2026-08-28
 
-Read this file completely before changing architecture or deployment. Repository state and live Google Cloud state are authoritative if either differs from this document.
+Read this file completely before changing architecture, deployment, demo behavior, or submission assets. Repository state and live Google Cloud state are authoritative if either differs from this document.
 
 ## Mission
 
@@ -22,7 +22,7 @@ Engineering principle:
 
 > **No agent claim is trusted merely because an LLM said it. Operational truth must be persisted, permissioned, and verifiable.**
 
-Next Shift turns messy human handovers into durable work, routes each issue to a least-privilege specialist, continues that work asynchronously after the initiating interaction ends, coordinates frontline people through Google Chat, gathers trusted evidence, and permits only an independent verifier to close work.
+Next Shift turns messy human handovers into durable operational work, routes each issue to a least-privilege specialist, continues that work asynchronously after the initiating interaction ends, coordinates frontline people through Google Chat, gathers trusted evidence, and permits only an independent verifier to close work.
 
 ## Non-negotiable boundaries
 
@@ -39,6 +39,7 @@ Next Shift turns messy human handovers into durable work, routes each issue to a
 11. Least privilege must be technically enforced through identities, IAM, invoker boundaries, capabilities, and deterministic authorization.
 12. Invalid, stale, or unauthorized actions must fail visibly and be auditable.
 13. Keep modules focused; avoid god modules and presentation-only security.
+14. The feature phase is frozen. Do not add functionality unless a concrete demo-blocking or eligibility failure requires it.
 
 ## Canonical operational channels
 
@@ -73,7 +74,7 @@ Do not invent alternative canonical state names. Do not silently skip transition
 ```text
 messy typed or spoken handover
         ↓
-Gemini 3.5 / managed ADK Agent Runtime
+Gemini 3.5 / managed Google ADK Agent Runtime
         ↓
 typed proposals
         ↓
@@ -121,7 +122,7 @@ All judge-visible model paths are on `gemini-3.5-flash`:
 - Facilities Google Chat photo comparison;
 - Operational Improvement Advisor / Memory Bank recommendation generation.
 
-The compact proof script must visibly report:
+The final compact proof reports:
 
 ```text
 MODEL_ASSERT all_demo_gemini_3_5=true
@@ -137,7 +138,15 @@ A delivered work card can expose `Acknowledge`, `Blocked`, and `Completed` only 
 
 Human Reach re-reads State Authority before rendering current state. After evidence or verification, Operations refreshes the same Chat card. `VERIFYING` is shown as evidence received / independent verification running; `CLOSED` is shown as green **Verified complete**.
 
-A stale Chat response against a CLOSED issue must be denied with no mutation. Final proof includes `reason=human_reach_stale_response`, expected `ACTION_PENDING`, current `CLOSED`.
+A stale Chat response against a CLOSED issue is denied with no mutation. Final proof includes:
+
+```text
+issue=Qej662s5TWLs3nXYzA6l
+decision=DENY
+reason=human_reach_stale_response
+expected=ACTION_PENDING
+current=CLOSED
+```
 
 ## Facilities photo proof
 
@@ -181,9 +190,16 @@ State Authority validates principal, capability, owner, current state, freshness
 
 Recovery Planner is advisory only. It may read bounded current state and recommend an allowlisted action, but cannot mutate state, change owner, record evidence, or close work. Operations separately sanctions the exact plan against fresh state.
 
-Final proof includes a real `recovery.sanction` ALLOW with `reason=recovery_action_sanctioned`.
+Final proof:
 
-Do not add recovery UI or controls unless explicitly required by the product plan. The demo should show prepared proof, not developer recovery controls.
+```text
+issue=YNQDbdkRpfzfis7Ay8rL
+plan=8Wxxoy4mAV04CeTZmt1l
+decision=ALLOW
+reason=recovery_action_sanctioned
+```
+
+Do not add recovery UI or controls. The demo should show prepared proof, not developer recovery controls.
 
 ## Cross-shift continuity and Memory Bank
 
@@ -216,7 +232,14 @@ The final product deliberately uses and proves:
 - Google Chat
 - Cloud Logging / Cloud Run telemetry
 
-Gateway / Model Armor behavioral proof must show benign `200 / ALLOW`, instruction-bypass `403 / DENY`, and `fail_open=false` through the bound managed runtime path.
+Gateway / Model Armor behavioral proof:
+
+```text
+trace=mission11-15a4d988-17ef-41e5-b5b3-3656019215f0
+benign=200/ALLOW
+bypass=403/DENY
+fail_open=false
+```
 
 ## Observability truth
 
@@ -244,50 +267,60 @@ Required production guarantees include:
 
 Duplicate events must not duplicate state mutation. Poison/malformed events must fail visibly and reach bounded retry/DLQ behavior.
 
-## Final accepted live proof
+## Final verified submission state
 
-Final Aug 27 acceptance proved:
-
-- messy multi-item text intake;
-- repeated same-owner Facilities jobs staying separate;
-- disputed printer repair held while safe jobs continued;
-- Gemini 3.5 spoken handover reaching durable work;
-- authoritative Human Reach card refresh;
-- completion claim remaining unverified;
-- stale Human Reach action DENY with no mutation;
-- Facilities BEFORE/AFTER photos submitted in Chat;
-- Gemini 3.5 visual comparison as supporting evidence only;
-- trusted evidence moving work to `VERIFYING`;
-- Independent Verifier closure and green Chat **Verified complete**;
-- Gateway/Model Armor `200 / 403` fail-closed proof;
-- sanctioned recovery proof;
-- branch readiness `179 PASS / 1 authorized branch warning / 0 FAIL / NEXT_SHIFT_READINESS=PASS` before the Memory 3.5 readiness extension.
-
-The durable acceptance record is `docs/autonomy/evidence/100-final-product-acceptance-20260827.md`.
-
-## Final submission gate
-
-Final submission must be tested on clean current `main`:
-
-```bash
-bash verify_readiness.sh
-```
-
-Required terminal condition:
+Final repository:
 
 ```text
+main=882975f89595f6306f9c6246bd5a6983fa0d5bb1
+working_tree=clean
+main_matches_origin_main=true
+```
+
+Local contracts:
+
+```text
+152 passed
+49 subtests passed
+```
+
+Final submission gate:
+
+```text
+PASS=180
 WARN=0
 FAIL=0
 NEXT_SHIFT_READINESS=PASS
+MODEL_ASSERT all_demo_gemini_3_5=true
+NEXT_SHIFT_SUBMISSION=PASS
 ```
 
-The exact PASS count may increase as high-value checks are added.
+Final serving revisions include:
 
-Compact read-only judge proof:
+- State Authority `next-shift-state-authority-00028-7jj`
+- Operations `next-shift-operations-00055-npf`
+- Human Reach `next-shift-human-reach-00018-2qs`
+- Coverage Critic `next-shift-coverage-critic-00008-87l`
+- Memory Sync `next-shift-memory-sync-00007-spj`
+- Verifier `next-shift-verifier-00003-69p`
+
+The durable final freeze record is `docs/autonomy/evidence/101-final-submission-freeze-20260828.md`.
+
+## Submission verification
+
+Run from clean `main`:
+
+```bash
+bash scripts/verify_submission.sh
+```
+
+For the compact judge-facing live proof:
 
 ```bash
 bash scripts/demo_proof_snapshot.sh
 ```
+
+Audit-proof queries intentionally use an explicit seven-day Cloud Logging freshness window so durable accepted evidence does not disappear merely because `gcloud logging read`'s implicit window expires. The predicates remain strict.
 
 ## Development workflow
 
@@ -305,34 +338,30 @@ git rev-parse origin/main
 
 Repository and deployed GCP state are authoritative.
 
-Preferred cycle:
+Preferred cycle if a genuine blocking defect is discovered:
 
 ```text
 inspect current repo/live truth
 → make the narrowest repo change
 → syntax / focused contract checks
 → full tests where warranted
-→ deploy the exact affected service(s)
+→ deploy only affected services if runtime changed
 → run real integration acceptance
 → inspect authoritative state/logs
-→ readiness
+→ submission gate
 → commit/PR/merge
 ```
 
-Do not patch production manually when the change belongs in the repo. Prefer repo/branch changes followed by pull, test, and reproducible deployment. Avoid giant ad-hoc heredocs and unnecessary local preview detours.
-
-Do not turn the project into a test-count exercise. Tests should protect state integrity, authorization, idempotency, evidence, model requirements, routing, and security boundaries.
+Do not patch production manually when the change belongs in the repo. Avoid giant ad-hoc heredocs and unnecessary local preview detours.
 
 ## Current objective
 
-The product feature phase is frozen. The remaining work is:
+**Engineering is frozen.** Remaining work:
 
-1. ensure PR #31 and documentation are truthful;
-2. merge to `main`;
-3. deploy the exact merged `main` revisions;
-4. run clean-main readiness with zero warnings/failures;
-5. smoke-test the accepted live paths;
-6. rehearse and record the approximately four-minute demo in `docs/demo-script.md`;
-7. submit.
+1. prepare the recording environment;
+2. rehearse the continuous approximately four-minute live demo in `docs/demo-script.md`;
+3. record the strongest clean take;
+4. finalize Devpost/submission copy and public repository presentation;
+5. submit before the deadline.
 
-Do not add new features unless a concrete final acceptance or eligibility failure requires one.
+Do not add new features unless rehearsal exposes a concrete showstopper or eligibility failure.
