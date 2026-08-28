@@ -159,12 +159,12 @@ Accepted sequence:
 3. Worker replies with the two synthetic images and @mentions Next Shift.
 4. Gemini 3.5 compares visible change only.
 5. Images are stored privately with hashes and inspection metadata as `SUPPORTING_VISUAL_EVIDENCE_ONLY`, `may_close_work=false`.
-6. Separate trusted Facilities evidence moves the issue to `VERIFYING`.
+6. A separate trusted Facilities evidence action records operational evidence and moves the issue to `VERIFYING`.
 7. Evidence Inspector checks the exact trusted evidence.
 8. Independent Verifier alone closes the issue.
 9. Human Reach refreshes the same card to green **Verified complete**.
 
-Do not describe Gemini photo comparison as trusted closure evidence.
+Do not describe Gemini photo comparison as trusted closure evidence. In the demo, do not omit the separate **Record trusted evidence** action before running the verifier.
 
 ## Intake and Coverage Critic behavior
 
@@ -211,6 +211,8 @@ Firestore and Memory Bank serve different purposes:
 Incoming shifts re-read current Firestore truth rather than trusting stale summaries.
 
 The Operational Improvement Advisor uses Gemini 3.5 and managed Memory Bank context, but declares `authority=ADVISORY_ONLY`, `current_state_authority=Firestore`, and `may_mutate_workflow=false`.
+
+Shift snapshots preserve a historical view of what crossed a handover boundary. The current operator-side snapshot entry point calls the existing continuity workflow; it does not mutate issue state and must not be described as an automatic deployed shift trigger.
 
 ## Google platform stack
 
@@ -269,7 +271,7 @@ Duplicate events must not duplicate state mutation. Poison/malformed events must
 
 ## Final verified submission state
 
-Final repository:
+The last fully accepted serving state before the final video-preparation changes was:
 
 ```text
 main=882975f89595f6306f9c6246bd5a6983fa0d5bb1
@@ -277,14 +279,14 @@ working_tree=clean
 main_matches_origin_main=true
 ```
 
-Local contracts:
+Local contracts at that freeze:
 
 ```text
 152 passed
 49 subtests passed
 ```
 
-Final submission gate:
+Final submission gate at that freeze:
 
 ```text
 PASS=180
@@ -295,7 +297,7 @@ MODEL_ASSERT all_demo_gemini_3_5=true
 NEXT_SHIFT_SUBMISSION=PASS
 ```
 
-Final serving revisions include:
+Final serving revisions at that freeze included:
 
 - State Authority `next-shift-state-authority-00028-7jj`
 - Operations `next-shift-operations-00055-npf`
@@ -304,7 +306,9 @@ Final serving revisions include:
 - Memory Sync `next-shift-memory-sync-00007-spj`
 - Verifier `next-shift-verifier-00003-69p`
 
-The durable final freeze record is `docs/autonomy/evidence/101-final-submission-freeze-20260828.md`.
+PR #34 subsequently changed the Operations intelligence fallback and demo-preparation documentation. Before recording, deploy only the updated Operations service and rerun the clean submission gate. The new live revision and gate output then become authoritative for the video.
+
+The durable previous freeze record is `docs/autonomy/evidence/101-final-submission-freeze-20260828.md`.
 
 ## Submission verification
 
@@ -358,17 +362,20 @@ Do not patch production manually when the change belongs in the repo. Avoid gian
 
 **Engineering is frozen.** Remaining work:
 
-1. run the pre-flight checks in `docs/demo-browser-runbook.md`, including seeding a shift snapshot and refreshing Memory Bank;
-2. capture the seven screen segments defined in that runbook;
-3. record voiceover against the picture cut using `docs/demo-script.md`;
-4. finalize Devpost/submission copy and public repository presentation;
-5. submit before the deadline.
+1. merge the final video runbook/script clarification;
+2. deploy the PR #34 Operations-only runtime change and verify the live revision;
+3. run the clean submission gate and pre-flight checks, including a shift snapshot and Memory Bank refresh;
+4. record one continuous approximately four-minute live browser take, with the browser agent driving and Patrick narrating live;
+5. finalize Devpost/submission copy and public repository presentation;
+6. submit before the deadline.
 
 Do not add new features unless rehearsal exposes a concrete showstopper or eligibility failure.
 
 ### Recording method
 
-Screen capture is driven by a browser agent; voiceover is recorded separately against the finished cut. Cuts may remove waiting time and may fall between segments. Cuts must never splice a later successful attempt over an earlier failure, and every frame must be a state the deployed system actually produced. A failed step means re-recording that whole segment.
+Use one continuous live browser run. A browser-control agent may drive the UI while Patrick narrates live. Do not assemble the proof from separately recorded successful segments and do not add a replacement voiceover afterwards.
+
+If a take fails, record a new take from the beginning. If a successful continuous take is only slightly over the time limit, a uniform speed-up of the whole recording is preferable to trimming or splicing; disclose any speed-up.
 
 ### Known demo-preparation defects (fixed)
 
