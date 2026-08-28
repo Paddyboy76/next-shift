@@ -2,258 +2,220 @@
 
 ## Goal
 
-One **approximately four-minute** video that proves Next Shift is a fortified operational fleet — not a summarizer, a chatbot collection, or a decorative dashboard.
+Record one continuous, approximately four-minute browser demo that shows a real Next Shift run on the deployed Google Cloud project.
 
-## Production method for this submission
+Claude may drive the browser. Patrick narrates live. The recording must not rely on cuts, stitched successes, hidden retries, or a voiceover added afterwards to make the run look cleaner than it was.
 
-Screen capture is driven by a browser agent following `docs/demo-browser-runbook.md`. Voiceover is recorded separately against the finished picture cut.
+If a take fails, stop and record a new take from the beginning. If a genuine continuous take is slightly too long, a uniform speed-up of the whole recording is preferable to trimming or splicing. If sped up, disclose it on screen or in the video description.
 
-This is a deliberate change from an unassisted live take. It removes the timing risk of narrating over four live model calls, and it lets each UI state stay on screen long enough to read.
+The browser runbook is `docs/demo-browser-runbook.md`.
 
-### The honesty line — do not cross it
+## Tone
 
-The product's entire claim is that unverified claims are not truth. A judge who catches a faked frame ends the submission, so:
+Sound like a person showing something they built, not somebody reading a judging rubric.
 
-- **Allowed:** trimming dead waiting time; cutting a mouse fumble; speeding up a long async wait with a visible speed-up or a clean cut; recording voiceover separately.
-- **Not allowed:** splicing a later successful attempt over an earlier failure to imply first-time success; showing a state the system did not actually produce; narrating anything the footage does not show.
-- If a step genuinely fails during capture, fix the cause and **re-record that whole segment**, from the segment's first action. Never stitch a failed attempt to a successful one inside one continuous-looking motion.
-- Every state on screen must be a state the deployed system actually produced from the actions visible in the same segment.
+- Use short sentences.
+- Say what the judge is looking at before naming technology.
+- Avoid strings of product names unless they explain a design choice.
+- Do not narrate every click.
+- Leave a little silence when an important state changes.
 
-### Segment boundaries
+## What the judge should understand
 
-Capture in the seven segments defined in the runbook. A cut between segments is an ordinary edit. A cut **inside** a segment may only remove waiting.
+By the end, the judge should have seen that:
 
-## Narration budget
-
-Total spoken narration is approximately **400 words over 240 seconds** — about 100 words per minute. That is deliberately unhurried. Do not add sentences to fill silence; silence over a state change is doing work.
-
-Each block below gives its word count. If you rewrite a line, keep the count.
-
-## What the judge must understand by the end
-
-1. an ordinary human handover becomes several durable operational jobs;
-2. Gemini 3.5 does reasoning, speech, critique, and multimodal evidence support;
-3. work continues asynchronously after the initiating interaction ends;
-4. six specialists are isolated by owner and identity;
-5. a human completion claim is not trusted as proof;
-6. trusted evidence and a separate verifier control closure;
-7. stale and unauthorized actions fail visibly;
-8. Agent Registry, Runtime, Memory Bank, Identity, Gateway, and Model Armor are really deployed;
-9. the deployed stack passes a readiness gate.
+1. a messy handover becomes separate durable operational jobs;
+2. work keeps moving after the person handing over is finished;
+3. six specialists have bounded responsibilities and identities;
+4. a human completion claim is not trusted as proof;
+5. Gemini 3.5 supports speech, critique, and multimodal evidence without owning workflow truth;
+6. trusted evidence and an independent verifier control closure;
+7. carried work, shift snapshots, and Memory Bank preserve continuity without replacing current Firestore state;
+8. stale or bypass actions are denied;
+9. the backend is visibly running on Google Cloud;
+10. the deployed stack passes the submission/readiness gate.
 
 ---
 
-# The script
+# One-take narration
 
-## 0:00–0:08 — teaser · the refusal (14 words)
+The timestamps are targets, not editing points. Keep recording continuously.
 
-**SCREEN** Google Chat, Facilities work card for the leaking tap.
+## 0:00–0:10 — the refusal
 
-**ACTION** The **Completed** button is clicked. The card resolves to `CLAIMED · UNVERIFIED` and asks for BEFORE and AFTER photos instead of closing.
+**SCREEN** Google Chat, fresh Facilities leaking-tap card.
 
-**EXACT WORDS**
+**ACTION** Click **Completed** once. Let `CLAIMED · UNVERIFIED` appear.
 
-> "A worker just marked this repair complete. Next Shift refused to close it."
+**SAY**
 
-**CRITERION** Demo (30%) — hook.
+> "Here's a Facilities job. The worker says it's done. Next Shift doesn't close it — it marks it claimed, unverified. Saying something is finished isn't the same as proving it."
 
-**WHY THIS EARNS POINTS** A judge on their twentieth video decides in eight seconds whether to lean in. This is a flash-forward, not the start of the story: it buys attention and is paid off at 1:54. Nothing is explained yet, and nothing needs to be.
+**WHY** Immediate live proof of the product's core trust boundary.
 
-## 0:08–0:18 — orientation (20 words)
+## 0:10–0:22 — orient the judge
 
-**SCREEN** Cut to Operations Control, top of page. The intro line `Interpret → Route → Execute → Prove → Verify` is visible.
+**SCREEN** Operations Control, top of page with `Interpret → Route → Execute → Prove → Verify` visible.
 
-**ACTION** None. Let the page sit.
+**SAY**
 
-**EXACT WORDS**
+> "This is the operations view. At shift change, unfinished work shouldn't turn into another note for the next person to chase."
 
-> "This is Next Shift. Unfinished work at shift change shouldn't become a note for the next person to chase."
+**WHY** Frames the real-world friction before the technical explanation.
 
-**CRITERION** Utility (40%) — problem framing.
+## 0:22–0:58 — messy speech becomes governed work
 
-**WHY THIS EARNS POINTS** This names the pain, which the previous version of the script never did. Do **not** read out the five stage names here. They are on screen, and they are narrated at 0:56 when a card is actually moving through them — a taxonomy explained before anything moves is dead air.
+**ACTION** Click **Record spoken handover**. Patrick says the paragraph below live. Stop recording, wait for the transcript, then click **Send to Next Shift**.
 
-## 0:18–0:56 — messy spoken handover becomes governed work (60 words)
-
-**SCREEN** Operations intake panel.
-
-**ACTION** **Record spoken handover** → the rehearsed paragraph plays → stop → transcript appears → **Send to Next Shift** → created and held outcomes are named on screen.
-
-**THE SPOKEN PARAGRAPH** (ordinary human speech — do not clean it up)
+**SPOKEN HANDOVER**
 
 > "The printer on seven isn't printing and the light keeps blinking, the meeting room aircon is leaking again, there's water coming from something in the kitchen cupboard on eight, and the cupboard door itself is hanging loose."
 
-**EXACT WORDS**
+**THEN SAY**
 
-> "One person, speaking normally, not knowing any schema. Gemini 3.5 transcribes it, then separates it into distinct jobs across six operational channels. A second Gemini Coverage Critic independently checks for omissions, duplication, conflation, and routing errors. Safe work moves. Genuinely disputed work is held for review rather than silently disappearing."
+> "That's normal end-of-shift speech, not a form. Gemini 3.5 transcribes it and separates the work into distinct jobs. A second Gemini Coverage Critic checks the coverage before anything is persisted. The printer doesn't clearly belong to one of our six teams, so it can be held for review instead of guessed into the wrong queue."
 
-**CRITERION** Utility (40%) + Architecture (30%) + live proof.
+**WHY** Demonstrates high-value autonomous delegation, ambiguity handling, and more than a chatbot response.
 
-**WHY THIS EARNS POINTS** Utility is the heaviest-weighted criterion, so it goes first. This is also the most impressive *live* moment in the demo — unstructured speech in, several correctly-owned governed jobs out. The held item is a feature, not a gap: it proves the system declines to guess.
+## 0:58–1:18 — the user is finished; the work is not
 
-**GUARDRAIL** If the printer is held because no canonical channel owns printer repair, say so plainly. Never imply there is an IT agent.
+**SCREEN** Newly created cards.
 
-## 0:56–1:16 — the user leaves, the work does not (32 words)
+**ACTION** Move the cursor away. Do not click or refresh. Let at least one job advance toward `ACTION_PENDING`.
 
-**SCREEN** The new job cards. Cursor moves away and stops. Cards advance on their own.
+**SAY**
 
-**ACTION** No interaction for several seconds. At least one card reaches `ACTION_PENDING` untouched.
+> "Now I'm not touching anything. State Authority has persisted the jobs in Firestore, and owner-filtered Pub/Sub wakes the right Cloud Run specialist, each with its own identity and permissions. You can watch the work move from Interpret, to Route, to Execute. The person handing over is already done."
 
-**EXACT WORDS**
+**WHY** This is the clearest proof of asynchronous fleet execution.
 
-> "The user is done. The work is not. Every job is persisted by State Authority in Firestore, then owner-filtered Pub/Sub wakes a dedicated Cloud Run specialist. Watch a job leave Interpret, pass Route, and reach Execute — with nobody driving it."
+## 1:18–1:48 — frontline completion evidence
 
-**CRITERION** Fortified Fleet — asynchronous long-running execution.
+**SCREEN** Return to the same Google Chat thread from the opening.
 
-**WHY THIS EARNS POINTS** This is the single clearest answer to the track's core requirement, and it is the right moment to name the five stages, because the judge can see a card crossing them. Hold the shot through the silence. The absence of interaction *is* the proof.
+**ACTION** Attach the synthetic BEFORE image, then AFTER image, @mention Next Shift, and send. Wait for Gemini's comparison reply.
 
-## 1:16–1:54 — the claim, and why it isn't enough (60 words)
+**SAY**
 
-**SCREEN** Google Chat, Facilities card — now in context.
+> "Frontline teams don't need another operations console. Their work can reach them in Google Chat. Here the worker adds before and after pictures. Gemini can tell us whether the visible change supports the repair, but it still cannot close the job. The images are supporting evidence only."
 
-**ACTION** Show `CLAIMED · UNVERIFIED` from the teaser. Attach the synthetic BEFORE and AFTER images in the same thread, @mention Next Shift, show the Gemini 3.5 comparison reply.
+**WHY** Demonstrates multimodal UX while preserving authority separation.
 
-**EXACT WORDS**
+## 1:48–2:18 — trusted evidence and independent closure
 
-> "Frontline teams don't need another console — work reaches them in Google Chat. But completed is not closed. Gemini 3.5 compares what visibly changed between before and after. That is supporting evidence only. It is stored with hashes, marked as visual support, and it explicitly cannot close the work. Neither can the worker."
+**SCREEN** Operations, leaking-tap issue drawer.
 
-**CRITERION** Architecture (30%) — authority separation, multimodal Gemini.
+**ACTION** Show the supporting visual evidence. Then click **Record trusted evidence**. Wait for the issue to move to Stage 5 / `VERIFYING`. Show that trusted evidence is a separate entry. Click **Run independent verifier**. Wait for `CLOSED`. Return to Google Chat and show the same card green as **Verified complete**.
 
-**WHY THIS EARNS POINTS** This is where the teaser pays off, and the judge now understands why the refusal at 0:00 was the right behaviour rather than a bug. Saying that the model *cannot* close work is a stronger architecture signal than any capability claim.
+**SAY**
 
-## 1:54–2:18 — trusted evidence and independent closure (40 words)
+> "Back here, the visual check is separate from trusted operational evidence. I'll record the trusted Facilities evidence now. That moves the job to Verify. An Evidence Inspector checks exactly what was submitted, and only the independent verifier can close it. Now it's closed, and the same Chat card turns green."
 
-**SCREEN** Operations, the issue advancing to Stage 5 · Verify, then the same Chat card.
+**WHY** This is the strongest architecture proof in the demo: claim, visual support, trusted evidence, inspection, and closure authority are separate.
 
-**ACTION** Show the trusted Facilities evidence entry, run the Independent Verifier, show `VERIFYING → CLOSED`, then cut to the Chat card refreshing to green **Verified complete**.
+## 2:18–2:38 — what the drawer means
 
-**EXACT WORDS**
+**SCREEN** Closed issue drawer / full audit trail.
 
-> "A separate trusted evidence identity moved this to verification. A separate Evidence Inspector checked the exact evidence submitted. And only the Independent Verifier — an identity nobody else can act as — was permitted to close it."
+**ACTION** Pause at the top, then scroll once slowly enough to show the deeper sections.
 
-**CRITERION** Architecture (30%) — strict separation of responsibilities.
+**SAY**
 
-**WHY THIS EARNS POINTS** Four distinct authorities in one closure, each provable. The green card returning to the exact surface the video opened on closes the loop visually.
+> "If somebody needs to know what happened, the drawer starts with what matters: where the job is now, what just happened, and what it's waiting for. The full history, evidence and technical audit are underneath."
 
-## 2:18–2:38 — the governed record (34 words)
+**WHY** Demonstrates operational clarity, auditability, and production-minded UX.
 
-**SCREEN** The issue drawer / full audit trail.
+## 2:38–2:58 — what survives the shift
 
-**ACTION** Open the drawer. Rest at the top, then scroll once, slowly.
+**SCREEN** Past panel: carried work, shift snapshots, populated Improvement Advisor.
 
-**EXACT WORDS**
+**SAY**
 
-> "We don't dump an event log on an operator. The top answers three questions: where is this now, what just happened, what is it waiting for. Everything underneath is there for whoever has to investigate."
+> "And this is the bit that makes it a shift system rather than a task list. Carried work survives the shift boundary. Snapshots preserve what crossed a handover. Firestore stays the current truth; Memory Bank looks across earlier shifts for patterns and gives management advice, but that advice can't change live work."
 
-**CRITERION** Architecture + observability, and UX maturity.
+**WHY** Demonstrates cross-shift continuity and persistent advisory context.
 
-**WHY THIS EARNS POINTS** Explaining the *hierarchy* rather than reading the contents shows product judgment, which reads as production readiness. Do not call this a distributed trace — it is a durable lifecycle correlation, and the distinction is in `docs/verification.md`.
+**GATE** Only show this if carried work is present, at least one real snapshot exists, and advisor cards have populated Pattern / Why / Confidence / Scope fields. Do not show an empty Past panel.
 
-## 2:38–2:58 — what survives the shift (34 words)
+## 2:58–3:26 — live Google Cloud proof
 
-**SCREEN** **Past** panel: carried work, shift snapshots, Improvement Advisor.
+**SCREEN** Cloud Shell, large readable font.
 
-**ACTION** Open Past. Rest on carried work first.
+**ACTION** Run `bash scripts/demo_proof_snapshot.sh`. Keep the output still.
 
-**EXACT WORDS**
+**SAY**
 
-> "Current state and long-term memory are deliberately separate. Firestore is authoritative now. Snapshots preserve what crossed each handover. Memory Bank carries patterns across sessions — but it is advisory, and it cannot change operational truth."
+> "These are live reads from the deployed Google Cloud project. Separate Cloud Run services and identities, Gemini 3.5 on the demo paths, Agent Gateway and Model Armor allowing the proper path and blocking a bypass, and a stale Chat action being denied instead of changing already-closed work."
 
-**CRITERION** Fortified Fleet — persistent cross-session context over weeks.
+**WHY** Gives visible backend proof and demonstrates security by showing correct denial, not only success.
 
-**WHY THIS EARNS POINTS** Directly answers the track's extended-context requirement.
-
-**PRE-FLIGHT GATE — this block is conditional.** Do not record it unless the runbook's pre-flight confirms **carried work ≥ 1**, **shift snapshots ≥ 1**, and **advisor cards rendering populated fields**. Pointing a camera at "Shift snapshots 0" or blank advisor cards actively costs more points than skipping the block. If the gate fails and cannot be fixed, cut the snapshot and Memory Bank sentences, keep carried work only, and give the recovered seconds to 0:18–0:56.
-
-## 2:58–3:26 — one compact live proof of the Google stack (46 words)
-
-**SCREEN** Cloud Shell, large font.
-
-**ACTION** Run `bash scripts/demo_proof_snapshot.sh`. Hold the output still and readable. Point at four things only.
-
-**EXACT WORDS**
-
-> "These are live reads from the deployed project, not labels in a UI. Real Cloud Run revisions and distinct service identities. Gemini 3.5 serving both speech and photo comparison. Agent Gateway and Model Armor: the allowed path returns two hundred, the bypass attempt returns four-oh-three, and it fails closed. And a stale Chat response against already-closed work: denied, with no mutation."
-
-**CRITERION** Architecture + production readiness.
-
-**WHY THIS EARNS POINTS** The `403` and the stale `DENY` are the highest-value frames in the whole video: they prove the security boundary by showing something correctly *fail*. Most submissions only show things succeeding.
-
-**GUARDRAIL** Do not scroll through dozens of services. Four things, then move.
-
-## 3:26–3:46 — architecture and generalization (34 words)
+## 3:26–3:47 — architecture without the shopping list
 
 **SCREEN** README architecture diagram.
 
-**ACTION** Rest on the diagram. No scrolling.
+**SAY**
 
-**EXACT WORDS**
+> "The intake agent runs on Vertex AI Agent Runtime and is catalogued in Agent Registry. The specialists are split by responsibility, State Authority is the only workflow writer, and Memory Bank is advisory. Agent Identity, Gateway and Model Armor make those boundaries enforceable rather than just labels on a diagram."
 
-> "Memory Bank lets the system learn across shifts without touching current work. Agent Identity means Facilities cannot act as the verifier. Gateway and Model Armor mean the allowed path succeeds and bypasses fail closed. The hospital is synthetic. The six channels are any 24/7 enterprise — factory, airline, hotel, utility, data centre."
+**WHY** Explains why the Google platform components exist instead of merely naming them.
 
-**CRITERION** Fortified Fleet checklist + innovation.
+## 3:47–4:00 — readiness and close
 
-**WHY THIS EARNS POINTS** Every platform component is stated as a *because*, never as a name on a list. "We use Agent Identity" scores nothing; "Facilities cannot act as the verifier" scores. This is the block most at risk of sounding like rubric-reading — keep the causal clause on every single item.
+**SCREEN** Pre-run readiness result showing `WARN=0`, `FAIL=0`, `NEXT_SHIFT_READINESS=PASS`, then return to the green Chat card if time allows.
 
-## 3:46–4:00 — close (24 words)
+**SAY**
 
-**SCREEN** Readiness output showing `WARN=0`, `FAIL=0`, `NEXT_SHIFT_READINESS=PASS`, then the green Chat card.
+> "Before this take, this deployed stack passed the submission gate with zero warnings and zero failures. The hospital data here is synthetic; the same problem exists anywhere shifts end before the work does. The handover ends. The work doesn't."
 
-**EXACT WORDS**
-
-> "The deployed stack passes its own production gate. No agent claim is trusted merely because a model said it. The handover ends. The work does not."
-
-**CRITERION** Readiness + memorable close.
-
-**WHY THIS EARNS POINTS** Ends on the product line, on the same surface the video opened on. Do not narrate a hard-coded PASS count — the number grows as checks are added, and a stale number is a needless accuracy risk.
+**WHY** Ends with reproducibility/readiness and generalizes the product beyond the demo domain.
 
 ---
 
 # Pre-recording preparation
 
-## Data preparation (must pass before capture)
+Run these before the take, not during it.
 
 ```bash
-# 1. Seed at least one real shift snapshot from current authoritative state.
+cd /home/patrick/next-shift
+git checkout main
+git pull --ff-only
+source /home/patrick/next-shift/.venv/bin/activate
+
+gcloud config set project next-shift-506004
+
 python scripts/seed_shift_snapshot.py --outgoing "Night shift" --incoming "Day shift"
 python scripts/seed_shift_snapshot.py --list
 
-# 2. Refresh Memory Bank so the advisor renders real Gemini recommendations.
 curl -s -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  "$(gcloud run services describe next-shift-memory-sync --region asia-southeast1 \
-     --format='value(status.url)')/v1/sync" | head -40
-```
+  "$(gcloud run services describe next-shift-memory-sync \
+      --project=next-shift-506004 \
+      --region=asia-southeast1 \
+      --format='value(status.url)')/v1/sync" | head -40
 
-Then confirm in the Operations **Past** panel that shift snapshots is non-zero and advisor cards show a populated pattern, why, confidence, and scope. If `recommendation_source` is `LOCAL_DETERMINISTIC_FALLBACK`, the memory service did not answer — the cards will render, but they are not Gemini output, so re-run the sync before recording.
-
-## Terminal preparation
-
-```bash
 bash scripts/demo_proof_snapshot.sh
-bash verify_readiness.sh | tee /tmp/next-shift-demo-readiness.log
-tail -8 /tmp/next-shift-demo-readiness.log
+bash scripts/verify_submission.sh | tee /tmp/next-shift-submission-video.log
+tail -20 /tmp/next-shift-submission-video.log
 ```
 
-`scripts/demo_proof_snapshot.sh` runs `set -euo pipefail` and **exits immediately if the active project is not `next-shift-506004`**. Pin the project in the recording tab and prove the script runs clean there before capture:
+Before pressing Record, confirm:
 
-```bash
-gcloud config set project next-shift-506004
-```
+- Operations is already authenticated through IAP;
+- a fresh Facilities leaking-tap card is in `ACTION_PENDING` in Google Chat;
+- BEFORE and AFTER images are ready to attach;
+- Past shows carried work, at least one snapshot, and populated advisor fields;
+- Cloud Shell is already in `/home/patrick/next-shift`, project `next-shift-506004`;
+- the architecture diagram is open in its own tab;
+- no private tokens, unrelated tabs, notifications, or real hospital information are visible.
 
-## Synthetic assets
+## Recording method
 
-- BEFORE: visibly leaking or broken tap/fitting.
-- AFTER: same subject and location, obviously repaired.
-- Avoid ambiguous pairs such as "window open" vs "window closed" — Gemini correctly treats those as insufficient repair proof, which is right behaviour but a poor demo frame.
-- Spoken paragraph as a 16-bit PCM WAV for the browser's fake audio device (see runbook).
+Recommended setup:
 
-## What not to do in the video
-
-- Do not spend time typing long terminal commands.
-- Do not show recovery-plan developer controls or manufacture a failure live.
-- Do not claim the printer belongs to Asset Logistics when no canonical channel owns printer repair.
-- Do not describe Gemini photo comparison as trusted closure evidence.
-- Do not describe Memory Bank as current operational state.
-- Do not say "synthetic" more than once — repeating it sounds defensive. Once, early, is enough.
-- Do not hide a live failure. Re-record the segment instead.
-- Do not show private keys, tokens, or emails beyond service identities.
+- Monitor 1: the browser window being recorded.
+- Monitor 2: this script and Claude's browser-control chat, not included in the capture.
+- Claude drives the browser using `docs/demo-browser-runbook.md`.
+- Patrick speaks the narration live and also speaks the handover paragraph when Claude starts the microphone capture.
+- Record screen + microphone together in OBS or an equivalent recorder.
+- Do not add a replacement voiceover later.
+- If the take fails, start a fresh take from the beginning.
+- If the whole genuine take must be sped up slightly to stay under four minutes, apply one uniform speed-up to the entire recording and disclose it.

@@ -1,194 +1,204 @@
-# Next Shift — browser agent recording runbook
+# Next Shift — continuous browser recording runbook
 
-This is the literal action list for an agent driving a browser while the screen is captured. It pairs with `docs/demo-script.md`, which holds the narration recorded separately afterwards.
+This is the action list for Claude or another browser-control agent during the final hackathon recording.
 
-**The agent performs actions only. It never types, speaks, or overlays narration.**
+The browser run is one continuous take. Patrick narrates live. Do not create separate successful clips for later stitching.
 
----
+If any required step fails, stop the take and report the failure. Fix the cause, reset the demo state, and record a new take from the beginning.
 
-## Rules for the agent
+## Non-negotiable rules
 
-1. **Never fabricate a state.** Do not edit the DOM, inject text, mock a response, or use developer tools to make anything appear. Every frame must be a state the deployed system actually produced.
-2. **Never retry inside a segment.** If a step fails or times out, stop, report what failed, and wait for a human decision. The segment is re-recorded from its first action — a retry mid-segment produces footage that implies a first-time success that did not happen.
-3. **Wait on visible state, never on a fixed sleep**, except where a HOLD is specified. A HOLD is deliberate on-screen dwell time so a human can read the frame; it is not a workaround for a slow request.
-4. **Move deliberately.** Pause about one second before each click and about two seconds after any state change. Automated cursors jump instantly, which makes state changes unreadable on video.
-5. **Do not resize, scroll, or open developer tools** unless a step says to.
-6. **Report, don't improvise.** If an element is missing or a label differs from this document, stop and report it. Do not hunt for a substitute control.
+1. Never edit the DOM, inject text, mock a response, or manufacture a state.
+2. Never retry a failed action during the same take in a way that hides the failure.
+3. Wait for visible state changes rather than assuming success after a fixed delay.
+4. Move the cursor deliberately. Pause briefly before important clicks and after important state changes.
+5. Do not open developer tools.
+6. Do not expose tokens, private credentials, unrelated tabs, or non-synthetic hospital information.
+7. Do not refresh during the asynchronous-progression proof unless the run has already failed.
+8. The Google Chat card used at the beginning and end must be the same card.
 
 ## Environment
 
-| | |
+| Surface | Required state |
 |---|---|
-| Operations | `https://next-shift-operations-mycnigy7dq-as.a.run.app` (IAP — sign in **before** capture starts) |
-| Google Chat | space **Next Shift – Facilities Ops** |
-| Cloud Shell | project pinned to `next-shift-506004` |
-| Viewport | 1920×1080, browser zoom 100%, Cloud Shell font large enough to read on a laptop |
+| Operations | Authenticated through IAP, top of page ready |
+| Google Chat | `Next Shift – Facilities Ops`, fresh leaking-tap card in `ACTION_PENDING` |
+| Cloud Shell | `/home/patrick/next-shift`, project `next-shift-506004` |
+| Architecture | README architecture diagram already positioned |
+| Viewport | 1920×1080, browser zoom 100% |
 
-Hide bookmarks, notifications, and any tab whose title is not part of the demo.
+Keep the browser address bar visible so the `.run.app` deployment remains visible when Operations is on screen. Hide bookmarks and notifications.
 
-### Microphone for the spoken handover
-
-The intake uses `navigator.mediaDevices.getUserMedia`, so a browser agent cannot speak into it. Launch Chrome with a fake audio device backed by the rehearsed paragraph:
-
-```bash
-google-chrome \
-  --use-fake-ui-for-media-stream \
-  --use-fake-device-for-media-stream \
-  --use-file-for-fake-audio-capture=/absolute/path/handover.wav%noloop \
-  --window-size=1920,1080
-```
-
-`handover.wav` must be **16-bit PCM WAV**; other formats are silently ignored and you will capture a recording of silence. Verify with a throwaway run before capture:
-
-```bash
-ffmpeg -i handover.m4a -ar 48000 -ac 1 -c:a pcm_s16le handover.wav
-ffprobe handover.wav      # expect pcm_s16le
-```
-
-If the fake device cannot be made to work, a human speaks this one step live and the agent resumes at Segment 3.
+Patrick speaks the handover paragraph live. Do not use fake-audio capture for the final take.
 
 ---
 
-## Pre-flight — run before any capture
+# Pre-flight — before recording
 
-Stop and report if any check fails. These gate segments that will otherwise record badly.
+Stop and report if any check fails.
 
 | # | Check | Required result |
 |---|---|---|
-| 1 | Operations loads past IAP without a sign-in prompt | Dashboard visible |
-| 2 | `Interpret → Route → Execute → Prove → Verify` visible in the intro | Present |
-| 3 | Chat space has a fresh Facilities leaking-tap card in `ACTION_PENDING` | **Acknowledge / Blocked / Completed** all present |
-| 4 | Open **Past** → carried work count | **≥ 1** |
-| 5 | Open **Past** → shift snapshots count | **≥ 1** (see below) |
-| 6 | Open **Past** → advisor cards | Pattern, Why, Confidence, Scope all **populated** |
-| 7 | Cloud Shell: `gcloud config get-value project` | `next-shift-506004` |
-| 8 | Cloud Shell: `bash scripts/demo_proof_snapshot.sh` completes | exit 0, output readable |
+| 1 | Operations loads without an IAP sign-in prompt | dashboard visible |
+| 2 | Operations intro | `Interpret → Route → Execute → Prove → Verify` visible |
+| 3 | Chat leaking-tap card | `Acknowledge / Blocked / Completed` present |
+| 4 | Past carried work | at least 1 |
+| 5 | Past shift snapshots | at least 1 |
+| 6 | Improvement Advisor | Pattern, Why, Confidence, Scope populated |
+| 7 | Cloud Shell project | `next-shift-506004` |
+| 8 | `bash scripts/demo_proof_snapshot.sh` | exit 0, output readable |
+| 9 | readiness log | `WARN=0`, `FAIL=0`, readiness/submission PASS |
+| 10 | evidence assets | BEFORE and AFTER images ready |
 
-Checks 5 and 6 are the two that historically fail. Fixes:
-
-```bash
-# Check 5 — nothing in the deployed services writes shift snapshots.
-python scripts/seed_shift_snapshot.py --outgoing "Night shift" --incoming "Day shift"
-
-# Check 6 — advisor cards render blank when the memory service does not answer.
-curl -s -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  "$(gcloud run services describe next-shift-memory-sync --region asia-southeast1 \
-     --format='value(status.url)')/v1/sync" | head -40
-```
-
-If check 5 or 6 still fails, **report it and skip Segment 6.** `docs/demo-script.md` defines the fallback narration for that case. Recording an empty Past panel is worse than omitting it.
+The snapshot and Memory Bank preparation belong before recording, never during the take.
 
 ---
 
-# Segments
+# Start recording — one continuous take
 
-Each segment is one continuous capture. Cuts between segments are ordinary edits; inside a segment, only waiting may be removed.
+## 1. Opening refusal
 
-## Segment 1 — the refusal (script 0:00–0:08)
+1. Focus Google Chat on the fresh leaking-tap Facilities card.
+2. Hold briefly so the card is readable.
+3. Click **Completed** once.
+4. Wait for `CLAIMED · UNVERIFIED` and the BEFORE / AFTER request.
+5. Hold briefly.
+6. Switch to Operations.
 
-*Capture ~25 s. Most of it is trimmed; only the click and the state change survive.*
+**Gate:** the card must not close. If it becomes closed/verified, stop the take.
 
-1. Focus the Google Chat tab on the Facilities leaking-tap card. HOLD 3 s.
-2. Click **Completed**. Click once.
-3. Wait for the card to show `CLAIMED · UNVERIFIED` and request BEFORE and AFTER photos.
-4. HOLD 5 s on that state.
+## 2. Orientation and spoken handover
 
-**Gate** The card must **not** show closed or verified. If it closed, the issue was not in `ACTION_PENDING` — stop and report.
+1. Show the top of Operations with the five-stage lifecycle line visible.
+2. Move to the spoken-handover control.
+3. Click **Record spoken handover**.
+4. Patrick speaks live:
 
-## Segment 2 — orientation (script 0:08–0:18)
+   > The printer on seven isn't printing and the light keeps blinking, the meeting room aircon is leaking again, there's water coming from something in the kitchen cupboard on eight, and the cupboard door itself is hanging loose.
 
-*Capture ~15 s.*
+5. Click stop when Patrick finishes.
+6. Wait for the transcript.
+7. Hold long enough to read the transcript. Do not edit it.
+8. Click **Send to Next Shift**.
+9. Wait for the named created/held outcomes.
+10. Hold briefly on those outcomes.
 
-1. Switch to the Operations tab, scrolled to the top.
-2. No interaction. HOLD 12 s with the five-stage line visible.
+**Gate:** created and held work must be named. If the result is ambiguous or missing, stop the take.
 
-## Segment 3 — spoken handover (script 0:18–0:56)
+## 3. Asynchronous progression
 
-*Capture 60–90 s. Model latency is trimmed later.*
+1. Make the newly created cards visible.
+2. Move the cursor to a neutral area.
+3. Do not click, refresh, scroll, or hover over controls.
+4. Wait until at least one job visibly progresses and reaches `ACTION_PENDING`.
+5. Hold briefly after the transition.
+6. Switch to Google Chat.
 
-1. Click into the Operations intake panel. HOLD 2 s.
-2. Click **Record spoken handover**.
-3. Let the fake audio device play the full paragraph — roughly 14 s. Do not click during playback.
-4. Click stop.
-5. Wait for the transcript to appear. HOLD 4 s so it is readable. **Do not edit the transcript**, including obvious speech artefacts — imperfect input surviving the pipeline is the point.
-6. Click **Send to Next Shift**.
-7. Wait for the intake outcome. HOLD 6 s on the named created and held items.
+**Gate:** the proof depends on no operator interaction during progression. If a refresh is required, stop the take.
 
-**Gate** The outcome must **name** each created and held item. If items are created but not named, stop and report — nothing may appear to vanish between the model and State Authority.
+## 4. Frontline photo evidence
 
-## Segment 4 — asynchronous progression (script 0:56–1:16)
+1. Return to the same leaking-tap card from the opening, still `CLAIMED · UNVERIFIED`.
+2. Attach the synthetic BEFORE image.
+3. Attach the synthetic AFTER image.
+4. @mention Next Shift and send in the same thread.
+5. Wait for Gemini 3.5's comparison reply.
+6. Hold long enough to show that the images are supporting/visual evidence only.
+7. Switch to Operations and open the leaking-tap issue.
 
-*Capture 40–60 s. This is the segment where a visible speed-up is acceptable.*
+**Gate:** Gemini's visual result must not imply it has closure authority. If it does, stop the take.
 
-1. Ensure the new job cards are visible.
-2. Move the cursor off the cards, to a neutral area. **Do not click, scroll, hover, or refresh.**
-3. HOLD, untouched, until at least one card visibly advances and one reaches `ACTION_PENDING`.
-4. HOLD 5 s after the last transition.
+## 5. Trusted evidence and independent closure
 
-**Gate** No interaction at all during step 3. The whole value of this segment is that nothing was driving it. If a manual refresh is unavoidable, report it — the narration must then change.
+This is the critical correction to the older runbook. Do not simply wait for Stage 5 after the image comparison.
 
-## Segment 5 — claim, photos, and closure (script 1:16–2:18)
+1. In the issue drawer, show the supporting visual evidence entry.
+2. Show that the issue is still waiting for trusted evidence.
+3. Click **Record trusted evidence** once.
+4. Wait for the trusted evidence action to complete.
+5. Wait for the issue to move to Stage 5 / `VERIFYING`.
+6. Hold on the evidence section so the trusted evidence entry is visibly distinct from supporting visual evidence.
+7. Click **Run independent verifier** once.
+8. Wait for `VERIFYING → CLOSED` / verified state.
+9. Hold briefly on the closed state.
+10. Switch back to Google Chat.
+11. Wait for the same card to show green **Verified complete**.
+12. Hold briefly.
+13. Switch back to Operations and open the closed issue.
 
-*Capture 90–120 s.*
+**Gates:**
 
-1. Switch to Google Chat, the same card, still `CLAIMED · UNVERIFIED`. HOLD 3 s.
-2. Attach the synthetic **BEFORE** image, then the **AFTER** image, in that order, in the same thread.
-3. @mention Next Shift and send.
-4. Wait for the Gemini 3.5 comparison reply. HOLD 6 s.
-5. Switch to Operations. Open the leaking-tap issue.
-6. Wait for **Stage 5 · Verify**. HOLD 3 s on the trusted evidence entry, separate from the visual support entry.
-7. Run the **Independent Verifier** action.
-8. Wait for `VERIFYING → CLOSED`. HOLD 4 s.
-9. Switch to Google Chat. Wait for the same card to refresh to green **Verified complete**. HOLD 5 s.
+- `Record trusted evidence` must be a separate action from the Chat photo evidence.
+- The issue must enter `VERIFYING` before the verifier is run.
+- The verifier must be the action that closes the job.
+- The final green Chat card must be the same original card.
 
-**Gates**
-- Step 4: the reply must mark the images supporting/visual evidence only. If it reads as closure authority, stop and report.
-- Step 6: visual support and trusted evidence must be **visibly distinct entries**. That distinction is the architecture argument.
-- Step 9: the card must be the **same** card from Segment 1, refreshed — not a new message.
+## 6. Governed record
 
-## Segment 6 — the record and what survives the shift (script 2:18–2:58)
+1. With the closed issue open, pause at the top of the drawer.
+2. Open / show the full audit trail.
+3. Scroll down once, slowly, so evidence, technical audit and deeper history are visible.
+4. Do not scroll back and forth.
+5. Close the drawer.
+6. Open **Past**.
 
-*Capture 50–70 s. Skip entirely if pre-flight checks 5 or 6 failed.*
+## 7. Cross-shift continuity
 
-1. With the closed issue open, open the **full audit trail** drawer. HOLD 5 s at the top.
-2. Scroll down slowly, once, over about 6 s. Do not scroll back up.
-3. Close the drawer.
-4. Click **Past**.
-5. HOLD 5 s on carried work.
-6. Expand **Shift snapshots**. HOLD 4 s.
-7. Expand **Management recommendations**. HOLD 5 s.
+1. Hold on carried work.
+2. Expand **Shift snapshots** and hold on a populated snapshot.
+3. Expand **Management recommendations** and hold on populated Pattern / Why / Confidence / Scope fields.
+4. Switch to Cloud Shell.
 
-**Gate** Steps 6 and 7 must show populated content. A zero count or a blank card must not be recorded — stop and report instead.
+**Gate:** do not show a zero snapshot count or blank advisor cards. If Past is empty, stop the take rather than recording a weak frame.
 
-## Segment 7 — live cloud proof and readiness (script 2:58–4:00)
+## 8. Live Google Cloud proof
 
-*Capture 60–90 s.*
-
-1. Switch to Cloud Shell. HOLD 2 s.
+1. Cloud Shell should already be in `/home/patrick/next-shift` with project `next-shift-506004`.
 2. Run:
+
    ```bash
    bash scripts/demo_proof_snapshot.sh
    ```
-3. Wait for completion. HOLD 10 s on the output, still — no scrolling while it is being read.
-4. Run:
-   ```bash
-   tail -8 /tmp/next-shift-demo-readiness.log
-   ```
-5. HOLD 6 s with `WARN=0`, `FAIL=0`, `NEXT_SHIFT_READINESS=PASS` visible.
-6. Switch to the README architecture diagram. HOLD 8 s. No scrolling.
-7. Switch to Google Chat, green **Verified complete** card. HOLD 5 s. End capture.
 
-**Gate** Step 2 must exit 0. It runs `set -euo pipefail` and aborts if the active project is wrong — if it aborts, fix the project and re-record the segment from step 1.
+3. Wait for the script to complete.
+4. Hold the output still and readable. Do not scroll while Patrick points out the proof.
+5. Show these items only:
+   - Cloud Run revisions and service identities;
+   - Gemini 3.5 demo paths;
+   - Gateway / Model Armor allowed path and bypass denial;
+   - stale Chat `DENY` with no mutation.
+6. Switch to the README architecture diagram.
+
+**Gate:** the command must exit 0. If it aborts, stop the take.
+
+## 9. Architecture
+
+1. Hold on the architecture diagram without scrolling.
+2. Patrick explains Agent Runtime, Agent Registry, specialist separation, State Authority, Memory Bank, Agent Identity, Gateway and Model Armor.
+3. Switch back to Cloud Shell.
+
+## 10. Readiness and close
+
+1. Run only the already-prepared log read:
+
+   ```bash
+   tail -20 /tmp/next-shift-submission-video.log
+   ```
+
+2. Hold on the final lines showing zero warnings/failures and PASS.
+3. If time permits, switch once more to the green **Verified complete** Chat card for the final sentence.
+4. End the recording only after Patrick finishes the closing line.
+
+Do not rerun the full submission gate during the take.
 
 ---
 
-## Handing off to the edit
+# After recording
 
-Deliver per segment: the raw capture, its start and end timestamps, and any step that needed a gate decision.
+Preferred submission is the genuine continuous take as captured.
 
-Editing order:
-1. Assemble segments 1–7 in order.
-2. Trim waiting only. Keep every HOLD — they exist so the voiceover has somewhere to sit.
-3. Target 240 s. If long, cut from Segments 6 and 7 first; never from 3 or 4.
-4. Record voiceover against the picture cut using the exact words in `docs/demo-script.md`.
-5. Final check: play it once muted. If the story is unclear without narration, the picture cut is wrong — narration cannot rescue it.
+Do not remove waits, mistakes, or failures from inside the run and then present the result as one live execution.
+
+If the successful continuous take is slightly over four minutes, a uniform speed-up of the entire recording is preferable to cuts or splicing. Disclose the speed-up. If speeding the whole run makes the narration hard to understand, record a faster clean take instead.
+
+A normal start/end trim that does not alter the live run may be technically harmless, but the safest competition interpretation is to leave the proof run continuous and untouched.
