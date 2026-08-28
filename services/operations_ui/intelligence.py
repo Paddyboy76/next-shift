@@ -72,23 +72,61 @@ def analyze_issues(issues: list[dict[str, Any]]) -> dict[str, Any]:
         for location, count in locations.most_common(5)
         if count > 1
     ]
-    recommendations: list[str] = []
+    recommendations: list[dict[str, Any]] = []
     if owners:
         busiest, count = owners.most_common(1)[0]
         recommendations.append(
-            f"Review {busiest} capacity: it represents {count} of {len(issues)} historical issues."
+            {
+                "pattern": f"{busiest} carries the largest share of historical work.",
+                "why_it_matters": (
+                    f"{count} of {len(issues)} historical issues are owned by {busiest}, "
+                    "which concentrates operational load on one channel."
+                ),
+                "recommended_change": f"Review {busiest} staffing and capacity for the busiest shifts.",
+                "affected_scope": busiest,
+                "expected_improvement": "Reduced queueing on the busiest operational channel.",
+                "confidence": "MEDIUM",
+            }
         )
     if timing:
         slowest = max(timing, key=timing.get)
         recommendations.append(
-            f"Inspect {slowest} handoffs first; its observed mean closure time is {timing[slowest]} minutes."
+            {
+                "pattern": f"{slowest} has the slowest observed closure time.",
+                "why_it_matters": (
+                    f"Observed mean closure time for {slowest} is {timing[slowest]} minutes "
+                    "across completed synthetic work."
+                ),
+                "recommended_change": f"Inspect {slowest} handoffs and evidence collection first.",
+                "affected_scope": slowest,
+                "expected_improvement": "Shorter time from claim to verified closure.",
+                "confidence": "MEDIUM",
+            }
         )
     if repeated:
+        location = repeated[0]["location"]
+        issue_count = repeated[0]["issue_count"]
         recommendations.append(
-            f"Investigate recurring operational demand at {repeated[0]['location']} ({repeated[0]['issue_count']} issues)."
+            {
+                "pattern": f"Recurring operational demand at {location}.",
+                "why_it_matters": f"{location} generated {issue_count} separate historical issues.",
+                "recommended_change": f"Investigate the underlying cause at {location} rather than repeating repairs.",
+                "affected_scope": location,
+                "expected_improvement": "Fewer repeat issues from the same location.",
+                "confidence": "LOW",
+            }
         )
     if not recommendations:
-        recommendations.append("Collect more completed synthetic operations before acting on trends.")
+        recommendations.append(
+            {
+                "pattern": "Insufficient completed history for trend analysis.",
+                "why_it_matters": "Too few completed synthetic operations exist to support a reliable pattern.",
+                "recommended_change": "Collect more completed synthetic operations before acting on trends.",
+                "affected_scope": "All channels",
+                "expected_improvement": "Trend recommendations become supportable.",
+                "confidence": "LOW",
+            }
+        )
 
     return {
         "sample_size": len(issues),
@@ -97,6 +135,7 @@ def analyze_issues(issues: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_closure_minutes_by_owner": timing,
         "repeated_locations": repeated,
         "recommendations": recommendations,
+        "recommendation_source": "LOCAL_DETERMINISTIC_FALLBACK",
     }
 
 

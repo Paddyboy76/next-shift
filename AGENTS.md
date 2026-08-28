@@ -358,10 +358,21 @@ Do not patch production manually when the change belongs in the repo. Avoid gian
 
 **Engineering is frozen.** Remaining work:
 
-1. prepare the recording environment;
-2. rehearse the continuous approximately four-minute live demo in `docs/demo-script.md`;
-3. record the strongest clean take;
+1. run the pre-flight checks in `docs/demo-browser-runbook.md`, including seeding a shift snapshot and refreshing Memory Bank;
+2. capture the seven screen segments defined in that runbook;
+3. record voiceover against the picture cut using `docs/demo-script.md`;
 4. finalize Devpost/submission copy and public repository presentation;
 5. submit before the deadline.
 
 Do not add new features unless rehearsal exposes a concrete showstopper or eligibility failure.
+
+### Recording method
+
+Screen capture is driven by a browser agent; voiceover is recorded separately against the finished cut. Cuts may remove waiting time and may fall between segments. Cuts must never splice a later successful attempt over an earlier failure, and every frame must be a state the deployed system actually produced. A failed step means re-recording that whole segment.
+
+### Known demo-preparation defects (fixed)
+
+Two defects made the Operations **Past** panel unrecordable and were repaired under boundary 14:
+
+- nothing in the deployed services invokes `next_shift.workflows.continuity.create_shift_handover`, so `shift_snapshots` stayed empty and the panel showed `Shift snapshots 0`. `scripts/seed_shift_snapshot.py` is the operator-side entry point for that existing workflow. It reads current state and writes one snapshot document; it never mutates an issue.
+- the `services/operations_ui/intelligence.py` fallback returned `recommendations` as plain strings while `static/deeplink.js` renders object fields, so every advisor card rendered blank whenever the Memory Sync call failed or timed out. The fallback now returns the same object shape and is tagged `recommendation_source=LOCAL_DETERMINISTIC_FALLBACK` so deterministic local analysis is never mistaken for Gemini output. `tests/test_operational_intelligence.py` pins the contract.
