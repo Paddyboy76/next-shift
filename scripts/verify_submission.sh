@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-REPO="/home/patrick/next-shift"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO}"
 
 printf '=== NEXT SHIFT SUBMISSION VERIFICATION ===\n'
