@@ -41,7 +41,7 @@ def test_spoken_receipt_binds_exact_transcript_to_durable_source_reference():
         "audit_reference": "spoken-handover:test",
         "transcript_sha256": hashlib.sha256(message.encode()).hexdigest(),
         "audio_sha256": "a" * 64,
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3.5-flash",
     }
     source = spoken.validated_spoken_source(message, receipt)
     assert source.startswith("spoken-handover:test:audio-sha256:")
